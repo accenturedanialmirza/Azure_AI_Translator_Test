@@ -5,7 +5,7 @@ from lingua import Language, LanguageDetectorBuilder
 detector = LanguageDetectorBuilder.from_all_languages().with_preloaded_language_models().build()
 language = detector.detect_language_of("Smoga kedepan agar lebih ditingkatkan lagi terkait training dan pelatihan utk meningkatkan pencapaian kinerja unit")
 
-file = "MIS menuju SSOT JUL 2024- text comments"
+file = "text-zh-large"
 
 df = pl.scan_csv(f'./data/src/{file}.csv')
 
@@ -26,4 +26,4 @@ def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
 
     return lf
 
-print(df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv'))
+df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
