@@ -4,6 +4,7 @@ import requests, uuid, json, os, time
 from typing import List, Tuple, Optional, Any
 from dotenv import load_dotenv
 from tqdm import tqdm
+# from detect_language import df_language_verified
 
 load_dotenv('.env')
 
@@ -105,7 +106,7 @@ class Translator:
         """
         # Create a LazyFrame by lazily scanning the CSV.
         # Only selects respondent id and comments columns
-        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments"])
+        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments", "comments_language_id", "verified"])
 
         # First, determine total row count without fully materializing data.
         total_rows = lf.select(pl.len()).collect().item()
@@ -114,9 +115,11 @@ class Translator:
         new_schema = {
             "respondent id": pl.Int64,
             "comments": pl.Utf8,
+            "comments_language_id": pl.Utf8,
+            "verified": pl.Boolean,
             "translated_text": pl.Utf8,
             "source_text_length": pl.List(pl.Int64),
-            "translated_text_length": pl.List(pl.Int64)
+            "translated_text_length": pl.List(pl.Int64),
         }
 
         output_dfs = []
@@ -168,14 +171,15 @@ class Translator:
             sentence_index = 0
             for source_sentence, translated_sentence in zip(row[source_split_column], row[translated_split_column]):
                 if source_sentence.strip():
-                    new_rows.append({"respondent_id": row["respondent id"], "sentence_index": sentence_index, "source_text": source_sentence, "translated_text": translated_sentence})
+                    new_rows.append({"respondent_id": row["respondent id"], "sentence_index": sentence_index, \
+                                     "source_text": source_sentence, "translated_text": translated_sentence} )
                     sentence_index += 1
         return pl.DataFrame(new_rows)
 
 
 if __name__ == "__main__":
     # file = "Infinitas SEP 2023- text comments"
-    file = "MIS menuju SSOT JUL 2024- text comments"
+    file = "MIS menuju SSOT JUL 2024- text comments_detected"
 
     translator_instance = Translator(
         input_path=f"./data/src/{file}.csv",
