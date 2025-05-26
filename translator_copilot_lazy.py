@@ -212,7 +212,7 @@ class Translator:
 
 if __name__ == "__main__":
     # file = "Infinitas SEP 2023- text comments"
-    file = "text-zh-large_detected"
+    file = "MIS menuju SSOT JUL 2024- text comments_detected"
 
     translator_instance = Translator(
         input_path=f"./data/src/{file}.csv",
