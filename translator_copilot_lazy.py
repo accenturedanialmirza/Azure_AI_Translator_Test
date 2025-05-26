@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 # from detect_language import df_language_verified
 from split_texts import split_text, split_sentences_into_rows
+from check_batch_size import check_temp_batch_size_matches, remove_temp_files
 import os
 
 load_dotenv('.env')
@@ -25,10 +26,11 @@ class Translator:
         self.input_path = input_path
         self.mini_batch_size = mini_batch_size  # Number of rows per mini-batch
 
-    def translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series]:
+    def translate_series(self, s: pl.Series, source_languages: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]:
         """
         Translates a Polars Series of texts using the Azure Text Translation API.
-        Returns two Series: one for the translated text and one for the sentence lengths.
+        Accepts a Series of source_languages to conditionally set the 'from' parameter.
+        Returns three Series: translated text, source sentence lengths, and translated sentence lengths.
         """
         # Ensure the series is of string type.
         if s.dtype != pl.String:
@@ -36,13 +38,20 @@ class Translator:
             s = s.cast(pl.String)
 
         # Prepare data for the API call by filtering out null values.
+        # Also, determine if a common 'from' language can be used for the batch.
         request_data = []
         original_indices = []
         texts_list: List[Optional[str]] = s.to_list()
-        for i, text in enumerate(texts_list):
-            if text is not None and text != pl.Null:
+        source_lang_list: List[Optional[str]] = source_languages.to_list()
+        
+        valid_source_langs_for_this_api_call = set()
+
+        for i, (text, lang) in enumerate(zip(texts_list, source_lang_list)):
+            if text is not None: # Polars Null becomes Python None in to_list()
                 request_data.append({"text": str(text)})
                 original_indices.append(i)
+                if lang is not None and isinstance(lang, str) and lang.lower() != "unknown":
+                    valid_source_langs_for_this_api_call.add(lang)
 
         # Handle the case of no valid texts.
         if not request_data:
@@ -59,6 +68,11 @@ class Translator:
             "to": translate_to_language,
             "includeSentenceLength": True
         }
+
+        # If all texts to be translated in this batch share a single, known source language, set the 'from' parameter.
+        if len(valid_source_langs_for_this_api_call) == 1:
+            params["from"] = valid_source_langs_for_this_api_call.pop()
+
         headers = {
             "Ocp-Apim-Subscription-Key": key,
             "Ocp-Apim-Subscription-Region": location,
@@ -138,7 +152,7 @@ class Translator:
 
             # Translate only the necessary rows
             if df_to_translate.height > 0:
-                translated_text_series, source_len_series, translated_len_series = self.translate_series(df_to_translate[column])
+                translated_text_series, source_len_series, translated_len_series = self.translate_series(df_to_translate[column], df_to_translate["comments_language_id"], translate_to_language=['en'])
                 df_to_translate = df_to_translate.with_columns([
                     translated_text_series.alias("translated_text"),
                     source_len_series.alias("source_text_length"),
@@ -165,12 +179,16 @@ class Translator:
         # For each mini-batch, slice and process.
         for start in tqdm(range(0, total_rows, self.mini_batch_size)):
             batch_index = start // self.mini_batch_size
-            batch_file = f"./data/temp/batch_{batch_index:03d}.parquet"
+            temp_dir = "./data/temp"
+            batch_file = f"{temp_dir}/batch_{batch_index:03d}.parquet"
 
             # Skip if already processed
-            if os.path.exists(batch_file):
-                print(f"Batch {batch_index} already processed. Skipping.")
-                continue
+            if check_temp_batch_size_matches(temp_dir, self.mini_batch_size):     
+                if os.path.exists(batch_file):
+                    print(f"Batch {batch_index} already processed. Skipping.")
+                    continue
+            else:
+                remove_temp_files(temp_dir)
 
             # Slice the LazyFrame for a mini-batch.
             batch_lf = lf.slice(start, self.mini_batch_size)
@@ -188,11 +206,7 @@ class Translator:
         final_df = pl.concat([pl.read_parquet(f"./data/temp/{f}") for f in batch_files])
 
         
-        temp_dir = "./data/temp"
-
-        for file in os.listdir(temp_dir):
-            if file.endswith(".parquet"):
-                os.remove(os.path.join(temp_dir, file))
+        remove_temp_files("./data/temp")
 
         return final_df
 
@@ -202,7 +216,7 @@ if __name__ == "__main__":
 
     translator_instance = Translator(
         input_path=f"./data/src/{file}.csv",
-        mini_batch_size=50  # Set your desired mini-batch size here.
+        mini_batch_size=55  # Set your desired mini-batch size here.
     )
 
     # Process the translation for the 'comments' column using our explicit mini-batch approach.
