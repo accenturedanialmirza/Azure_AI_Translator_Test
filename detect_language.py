@@ -1,11 +1,14 @@
 import polars as pl
 from lingua import Language, LanguageDetectorBuilder
 
-# languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANISH]
-detector = LanguageDetectorBuilder.from_languages(*Language.all()).build()
+languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANISH, \
+             Language.ITALIAN, Language.CHINESE, Language.JAPANESE, Language.PORTUGUESE, \
+             Language.INDONESIAN, Language.THAI]
+# detector = LanguageDetectorBuilder.from_languages(*Language.all()).build()
+detector = LanguageDetectorBuilder.from_languages(*languages).build()
 # language = detector.detect_language_of("Smoga kedepan agar lebih ditingkatkan lagi terkait training dan pelatihan utk meningkatkan pencapaian kinerja unit")
 
-file = "MIS menuju SSOT JUL 2024- text comments"
+file = "Accenture TGPS FEB 2024- text comments"
 
 df = pl.scan_csv(f'./data/src/{file}.csv')
 

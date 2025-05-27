@@ -7,7 +7,6 @@ from tqdm import tqdm
 # from detect_language import df_language_verified
 from split_texts import split_text, split_sentences_into_rows
 from check_batch_size import check_temp_batch_size_matches, remove_temp_files
-import os
 
 load_dotenv('.env')
 
@@ -105,9 +104,10 @@ class Translator:
             # End of API response processing.
         except requests.exceptions.RequestException as e:
             print(f"Error during the API call: {e}")
-            translated_texts = [None] * len(s)
-            source_lengths = [[0]] * len(s)
-            translated_lengths = [[0]] * len(s)
+            # translated_texts = [None] * len(s)
+            # source_lengths = [[0]] * len(s)
+            # translated_lengths = [[0]] * len(s)
+            raise
 
         translated_text_series = pl.Series("translated_text", translated_texts, dtype=pl.String)
         source_length_series = pl.Series("source_text_length", source_lengths, dtype=pl.List(pl.Int64))
@@ -205,18 +205,17 @@ class Translator:
         batch_files = sorted([f for f in os.listdir("./data/temp") if f.startswith("batch_") and f.endswith(".parquet")])
         final_df = pl.concat([pl.read_parquet(f"./data/temp/{f}") for f in batch_files])
 
-        
         remove_temp_files("./data/temp")
 
         return final_df
 
 if __name__ == "__main__":
     # file = "Infinitas SEP 2023- text comments"
-    file = "MIS menuju SSOT JUL 2024- text comments_detected"
+    file = "Accenture TGPS FEB 2024- text comments_detected"
 
     translator_instance = Translator(
         input_path=f"./data/src/{file}.csv",
-        mini_batch_size=55  # Set your desired mini-batch size here.
+        mini_batch_size=50  # Set your desired mini-batch size here.
     )
 
     # Process the translation for the 'comments' column using our explicit mini-batch approach.
