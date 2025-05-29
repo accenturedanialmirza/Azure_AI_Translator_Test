@@ -17,13 +17,13 @@ if not key or not endpoint:
     raise ValueError("Azure Text Translation KEY and ENDPOINT must be set in .env")
 
 location = "eastus"  # You might want to make this configurable.
-path = "/translate"
-constructed_url = endpoint + path
+API_TRANSLATE_PATH = "/translate"
+constructed_url = endpoint + API_TRANSLATE_PATH
 
 class Translator:
     def __init__(self, input_path: str, mini_batch_size: int = 100):
         self.input_path = input_path
-        self.mini_batch_size = mini_batch_size  # Number of rows per mini-batch
+        self.mini_batch_size = mini_batch_size
 
     def translate_series(self, s: pl.Series, source_languages: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]:
         """
@@ -32,9 +32,9 @@ class Translator:
         Returns three Series: translated text, source sentence lengths, and translated sentence lengths.
         """
         # Ensure the series is of string type.
-        if s.dtype != pl.String:
-            print(f"Warning: Input series '{s.name}' is not of type pl.String. Attempting conversion.")
-            s = s.cast(pl.String)
+        if s.dtype != pl.Utf8: # pl.String is an alias for pl.Utf8
+            print(f"Warning: Input series '{s.name}' is not of type pl.Utf8. Attempting conversion.")
+            s = s.cast(pl.Utf8)
 
         # Prepare data for the API call by filtering out null values.
         # Also, determine if a common 'from' language can be used for the batch.
@@ -175,17 +175,20 @@ class Translator:
             # Combine both parts and sort to maintain original order
             return pl.concat([df_to_translate, df_no_translate]).sort("respondent id")
 
-        output_dfs = []
+        # output_dfs = [] # Removed: This was accumulating DataFrames in memory.
+
+        temp_dir = "./data/temp"
+        os.makedirs(temp_dir, exist_ok=True) # Ensure temp directory exists
+
         # For each mini-batch, slice and process.
-        for start in tqdm(range(0, total_rows, self.mini_batch_size)):
+        for start in tqdm(range(0, total_rows, self.mini_batch_size), desc="Processing batches"):
             batch_index = start // self.mini_batch_size
-            temp_dir = "./data/temp"
-            batch_file = f"{temp_dir}/batch_{batch_index:03d}.parquet"
+            batch_file = os.path.join(temp_dir, f"batch_{batch_index:03d}.parquet")
 
             # Skip if already processed
-            if check_temp_batch_size_matches(temp_dir, self.mini_batch_size):     
+            if check_temp_batch_size_matches(temp_dir, self.mini_batch_size):
                 if os.path.exists(batch_file):
-                    print(f"Batch {batch_index} already processed. Skipping.")
+                    print(f"Batch {batch_index} (file: {batch_file}) already processed. Skipping.")
                     continue
             else:
                 remove_temp_files(temp_dir)
@@ -198,20 +201,37 @@ class Translator:
 
             # Save batch immediately
             batch_df.write_parquet(batch_file)
-            output_dfs.append(batch_df)
+            # output_dfs.append(batch_df) # Removed: Avoid accumulating in memory.
 
-        
         # Load all saved batches
-        batch_files = sorted([f for f in os.listdir("./data/temp") if f.startswith("batch_") and f.endswith(".parquet")])
-        final_df = pl.concat([pl.read_parquet(f"./data/temp/{f}") for f in batch_files])
+        batch_files = sorted([
+            os.path.join(temp_dir, f)
+            for f in os.listdir(temp_dir)
+            if f.startswith("batch_") and f.endswith(".parquet")
+        ])
 
-        remove_temp_files("./data/temp")
+        if not batch_files:
+            print("No batch files found to concatenate. Returning an empty DataFrame with the target schema.")
+            final_df = pl.DataFrame(schema=new_schema)
+        else:
+            try:
+                final_df = pl.concat(
+                    [pl.read_parquet(bf) for bf in batch_files],
+                    how="vertical" # Assumes schemas are identical, which they should be
+                )
+            except Exception as e:
+                print(f"Error during final concatenation of batch files: {e}")
+                print("This might indicate that the total dataset is too large to fit in memory even after batch processing.")
+                print("Consider reducing the data size, increasing available memory, or processing the Parquet files as a dataset (e.g., using pl.scan_parquet).")
+                raise
+
+        remove_temp_files(temp_dir) # Clean up temp files
 
         return final_df
 
 if __name__ == "__main__":
     # file = "Infinitas SEP 2023- text comments"
-    file = "Accenture TGPS FEB 2024- text comments_detected"
+    file = "text-zh-simplified_detected"
 
     translator_instance = Translator(
         input_path=f"./data/src/{file}.csv",
@@ -227,7 +247,7 @@ if __name__ == "__main__":
                     pl.struct(["translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("translated_split_texts")
                 ])
 
-    processed_df.write_parquet(f"./data/prod/{file}-simplified_translated_lazy.parquet")
+    processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
 
     final_df = split_sentences_into_rows(processed_df, "source_split_texts", "translated_split_texts")
-    final_df.write_parquet(f"./data/prod/{file}-simplified_translated_split_lazy.parquet")
+    final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")

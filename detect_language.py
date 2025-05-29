@@ -8,7 +8,7 @@ languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANIS
 detector = LanguageDetectorBuilder.from_languages(*languages).build()
 # language = detector.detect_language_of("Smoga kedepan agar lebih ditingkatkan lagi terkait training dan pelatihan utk meningkatkan pencapaian kinerja unit")
 
-file = "Accenture TGPS FEB 2024- text comments"
+file = "text-zh-simplified"
 
 df = pl.scan_csv(f'./data/src/{file}.csv')
 
