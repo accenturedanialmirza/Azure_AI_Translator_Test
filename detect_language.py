@@ -13,7 +13,7 @@ file = "text-zh-simplified"
 df = pl.scan_csv(f'./data/src/{file}.csv')
 
 # Define a function to detect language and return the ISO code
-def detect_language_iso(text: str) -> str:
+def _detect_language_iso(text: str) -> str:
     if text is None or text.strip() == "":
         return "unknown"
     lang = detector.detect_language_of(text)
@@ -22,11 +22,11 @@ def detect_language_iso(text: str) -> str:
 def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
     # Load the LazyFrame and add the language detection column
     lf = df.with_columns([
-            pl.col("comments").map_elements(detect_language_iso, return_dtype=pl.String).alias("comments_language_id")
+            pl.col("comments").map_elements(_detect_language_iso, return_dtype=pl.String).alias("comments_language_id")
         ]).with_columns([
             pl.lit(True).alias("verified")
         ])
 
     return lf
 
-df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
+# df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
