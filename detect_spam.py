@@ -34,41 +34,7 @@ def _clean_text(text: str) -> str:
     text = text.lower().strip()
     return text
 
-# model = joblib.load('spam-detection/model.pkl')
 loaded_model = joblib.load("spam-detection/comment_hide_classifier.joblib")
-# model_features = joblib.load('spam-detection/model_features.pkl')
-# vectorizer = joblib.load('spam-detection/vectorizer.pkl')
-
-# Function to make predictions
-# def predict_hide_comment(comments: str, sentiment_category: str):
-#     # Create a DataFrame for the input data
-#     input_data = pd.DataFrame({
-#         # 'question code': [question_code],
-#         'comments': _clean_text([comments]),
-#         'sentiment category': [sentiment_category],
-#     })
-    
-#     # Convert categorical data to numerical data for 'question code'
-#     input_data = pd.get_dummies(input_data, columns=['sentiment category'])
-    
-#     # Vectorize 'comments' column using the loaded TF-IDF vectorizer
-
-#     comments_tfidf = vectorizer.transform(input_data['comments']).toarray()
-    
-#     # Drop the original 'comments' column and add the TF-IDF features
-#     input_data = input_data.drop(columns=['comments'])
-#     input_data = pd.concat([input_data, pd.DataFrame(comments_tfidf, index=input_data.index)], axis=1)
-
-#     # Reindex input_data to match the columns used during training
-#     # Fill any missing columns with 0
-#     input_data = input_data.reindex(columns=model_features, fill_value=0)
-    
-#     input_data.columns = input_data.columns.astype(str)
-    
-#     # Make prediction
-#     prediction = model.predict(input_data)
-    
-#     return prediction
 
 def predict_hide_comment(comments: str, sentiment_category: str) -> bool:
 

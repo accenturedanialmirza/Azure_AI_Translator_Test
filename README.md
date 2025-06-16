@@ -26,9 +26,9 @@ The project is organized into several Python modules, each responsible for a spe
 *   [`detect_language.py`](detect_language.py): Implements the `df_language_verified` function for detecting the language of text within a Polars DataFrame.
 *   [`detect_spam.py`](detect_spam.py): Provides the `classify_comment` function for identifying spam comments using a pre-trained Naive Bayes model.
 *   [`split_texts.py`](split_texts.py): Contains functions like `split_text` and `split_sentences_into_rows` for breaking down texts into sentences and restructuring DataFrames.
-*   [`check_batch_size.py`](check_batch_size.py): (Presumed) Utility for checking or validating batch sizes for API calls.
-*   [`translator_gemini.py`](translator_gemini.py): (Presumed) An alternative or experimental translator module, possibly using Google Gemini API.
-*   [`translator.py`](translator.py): (Presumed) A base or alternative translator module.
+*   [`check_batch_size.py`](check_batch_size.py): Utility for validating and managing batch sizes for API calls, ensuring efficient data transfer.
+*   [`translator_gemini.py`](translator_gemini.py): An alternative translator module, potentially for integrating with Google Gemini API or other translation services.
+*   [`translator.py`](translator.py): A foundational translator module, possibly serving as a base for other translator implementations.
 *   [`test_azure_sample.ipynb`](test_azure_sample.ipynb): Jupyter notebook for testing Azure AI Translator API samples.
 *   [`test_translator.py`](test_translator.py): Unit tests for the translator functionalities.
 
@@ -39,12 +39,13 @@ The project is organized into several Python modules, each responsible for a spe
 
 ### Spam Detection Module
 
-*   `spam-detection/`: Directory containing assets for the spam detection model.
-    *   [`naive_bayes_model.pkl`](spam-detection/naive_bayes_model.pkl): The serialized Naive Bayes model.
-    *   [`vectorizer.pkl`](spam-detection/vectorizer.pkl): The serialized TF-IDF vectorizer used for text preprocessing.
-    *   [`naive-bayes-model.ipynb`](spam-detection/naive-bayes-model.ipynb): Jupyter notebook detailing the training and evaluation of the Naive Bayes model.
-    *   [`youtube-comment-spam-detection-max-94-89.ipynb`](spam-detection/youtube-comment-spam-detection-max-94-89.ipynb): Another Jupyter notebook related to spam detection, possibly an earlier iteration or a different model.
-    *   [`youtube-comments-spam-detection-f1-score-96.ipynb`](spam-detection/youtube-comments-spam-detection-f1-score-96.ipynb): Jupyter notebook focusing on achieving a high F1-score for spam detection.
+*   `spam-detection/`: Directory containing assets and notebooks for the spam detection module.
+    *   [`comment_hide_classifier.joblib`](spam-detection/comment_hide_classifier.joblib): The serialized machine learning model used for classifying comments.
+    *   [`model-category.ipynb`](spam-detection/model-category.ipynb): Jupyter notebook for exploring and categorizing spam detection models.
+    *   [`model-pipeline-category.ipynb`](spam-detection/model-pipeline-category.ipynb): Jupyter notebook detailing the pipeline for model training and evaluation.
+    *   [`youtube-comment-spam-detection-max-94-89.ipynb`](spam-detection/youtube-comment-spam-detection-max-94-89.ipynb): Jupyter notebook showcasing a spam detection model with a maximum accuracy of 94.89%.
+    *   [`youtube-comments-spam-detection-f1-score-96.ipynb`](spam-detection/youtube-comments-spam-detection-f1-score-96.ipynb): Jupyter notebook focusing on a spam detection model achieving an F1-score of 96%.
+    *   `catboost_info/`: Directory containing training logs and information for CatBoost models, if used.
 
 ## 4. Setup and Installation
 
@@ -106,11 +107,30 @@ This will:
 
 The project relies on the following key Python libraries, as specified in [`requirements.txt`](requirements.txt):
 
-*   `polars`: For high-performance DataFrame operations.
-*   `requests`: For making HTTP requests to the Azure AI Translator API.
-*   `python-dotenv`: For loading environment variables.
-*   `numpy`: Numerical computing.
-*   `pandas`: Data manipulation and analysis (though Polars is preferred for core operations).
-*   `pyarrow`: For Parquet file handling.
-*   `tqdm`: For progress bars.
-*   Other dependencies for Jupyter notebooks and development.
+*   `polars`: For high-performance DataFrame operations and efficient data manipulation.
+*   `requests`: For making HTTP requests, primarily to the Azure AI Translator API.
+*   `python-dotenv`: For loading environment variables from a `.env` file.
+*   `numpy`: Fundamental package for numerical computing in Python.
+*   `pandas`: Data manipulation and analysis, often used for data loading and initial processing.
+*   `pyarrow`: Provides Python bindings for Apache Arrow, essential for Parquet file handling.
+*   `tqdm`: For displaying progress bars during iterative processes.
+*   `ipykernel`: IPython Kernel for Jupyter notebooks.
+*   `jupyter_client`: Jupyter protocol client.
+*   `jupyter_core`: Core utilities for Jupyter.
+*   `matplotlib-inline`: Matplotlib backend for inline plots in Jupyter.
+*   `mypy`: Optional static type checker for Python.
+*   `packaging`: Core utilities for Python packages.
+*   `psutil`: Cross-platform library for retrieving process and system utilization.
+*   `pygments`: A generic syntax highlighter.
+*   `python-dateutil`: Extensions to the standard `datetime` module.
+*   `pytz`: World timezone definitions for Python.
+*   `pyzmq`: Python bindings for ZeroMQ.
+*   `setuptools`: Easily download, build, install, upgrade, and uninstall Python packages.
+*   `six`: Python 2 and 3 compatibility utilities.
+*   `tornado`: A Python web framework and asynchronous networking library.
+*   `traitlets`: A configuration system for Python applications.
+*   `urllib3`: A powerful, user-friendly HTTP client for Python.
+*   `fastexcel`: For fast Excel file reading.
+*   `scikit-learn`: Machine learning library, likely used for the spam detection model.
+*   `joblib`: For serializing and deserializing Python objects, used for saving models.
+*   `catboost`: Gradient boosting library, potentially used for advanced spam detection models.
