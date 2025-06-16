@@ -7,7 +7,7 @@ from tqdm import tqdm
 # from detect_language import df_language_verified
 from split_texts import split_text, split_sentences_into_rows
 from check_batch_size import check_temp_batch_size_matches, remove_temp_files
-from detect_spam import classify_comment
+# from detect_spam import classify_comment
 
 load_dotenv('.env')
 
@@ -66,7 +66,8 @@ class Translator:
         params = {
             "api-version": "3.0",
             "to": translate_to_language,
-            "includeSentenceLength": True
+            "includeSentenceLength": True,
+            "toScript": "latn" # Added for transliteration
         }
 
         # If all texts to be translated in this batch share a single, known source language, set the 'from' parameter.
@@ -89,6 +90,9 @@ class Translator:
             translated_texts = [None] * len(s)
             source_lengths: List[List[int]] = [[0]] * len(s)
             translated_lengths: List[List[int]] = [[0]] * len(s)
+            detected_languages: List[Optional[str]] = [None] * len(s) # New: for detected language
+            detected_language_scores: List[Optional[float]] = [None] * len(s) # New: for detected language score
+            
             # Process the API response, mapping back to the original indices.
             for api_response_index, item in enumerate(response_json):
                 original_idx = original_indices[api_response_index]
@@ -96,24 +100,32 @@ class Translator:
                     translated_text = item["translations"][0]["text"]
                     source_text_length = item['translations'][0]['sentLen']['srcSentLen']
                     translated_length = item["translations"][0]["sentLen"]["transSentLen"]
+                    
+                    # New: Extract detected language and score
+                    detected_language = item.get("detectedLanguage", {}).get("language")
+                    detected_language_score = item.get("detectedLanguage", {}).get("score")
+
                     translated_texts[original_idx] = translated_text
                     source_lengths[original_idx] = source_text_length
                     translated_lengths[original_idx] = translated_length
+                    detected_languages[original_idx] = detected_language # New
+                    detected_language_scores[original_idx] = detected_language_score # New
+
                 except (IndexError, KeyError, TypeError) as e:
                     print(f"Warning: Error processing API response for item at API index {api_response_index} "
                           f"(original index {original_idx}): {e}. Response item: {item}")
             # End of API response processing.
         except requests.exceptions.RequestException as e:
             print(f"Error during the API call: {e}")
-            # translated_texts = [None] * len(s)
-            # source_lengths = [[0]] * len(s)
-            # translated_lengths = [[0]] * len(s)
             raise
 
         translated_text_series = pl.Series("translated_text", translated_texts, dtype=pl.String)
         source_length_series = pl.Series("source_text_length", source_lengths, dtype=pl.List(pl.Int64))
         translated_length_series = pl.Series("translated_text_length", translated_lengths, dtype=pl.List(pl.Int64))
-        return translated_text_series, source_length_series, translated_length_series
+        detected_language_series = pl.Series("detected_language", detected_languages, dtype=pl.String) # New
+        detected_language_score_series = pl.Series("detected_language_score", detected_language_scores, dtype=pl.Float64) # New
+        
+        return translated_text_series, source_length_series, translated_length_series, detected_language_series, detected_language_score_series
 
     def process_translation_lazy(self, column: str) -> pl.DataFrame:
         """
@@ -123,7 +135,7 @@ class Translator:
         """
         # Create a LazyFrame by lazily scanning the CSV.
         # Only selects respondent id and comments columns
-        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments", "comments_language_id", "verified"])
+        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments", "comments_language_id", "verified", "question code",	"hide comment", "sentiment category"])
 
         # First, determine total row count without fully materializing data.
         total_rows = lf.select(pl.len()).collect().item()
@@ -134,9 +146,14 @@ class Translator:
             "comments": pl.Utf8,
             "comments_language_id": pl.Utf8,
             "verified": pl.Boolean,
+            "question code": pl.Utf8,
+            "hide comment": pl.Boolean,
+            "sentiment category": pl.Utf8,
             "translated_text": pl.Utf8,
             "source_text_length": pl.List(pl.Int64),
             "translated_text_length": pl.List(pl.Int64),
+            "detected_language": pl.Utf8,
+            "detected_language_score": pl.Float64,
         }
 
         # Define a batch function.
@@ -153,24 +170,31 @@ class Translator:
 
             # Translate only the necessary rows
             if df_to_translate.height > 0:
-                translated_text_series, source_len_series, translated_len_series = self.translate_series(df_to_translate[column], df_to_translate["comments_language_id"], translate_to_language=['en'])
+                translated_text_series, source_len_series, translated_len_series, detected_lang_series, detected_lang_score_series = \
+                    self.translate_series(df_to_translate[column], df_to_translate["comments_language_id"], translate_to_language=['en'])
                 df_to_translate = df_to_translate.with_columns([
                     translated_text_series.alias("translated_text"),
                     source_len_series.alias("source_text_length"),
-                    translated_len_series.alias("translated_text_length")
+                    translated_len_series.alias("translated_text_length"),
+                    detected_lang_series.alias("detected_language"), # New
+                    detected_lang_score_series.alias("detected_language_score") # New
                 ])
             else:
                 df_to_translate = df_to_translate.with_columns([
                     pl.lit(None).alias("translated_text").cast(pl.Utf8),
                     pl.lit([0]).alias("source_text_length").cast(pl.List(pl.Int64)),
-                    pl.lit([0]).alias("translated_text_length").cast(pl.List(pl.Int64))
+                    pl.lit([0]).alias("translated_text_length").cast(pl.List(pl.Int64)),
+                    pl.lit(None).alias("detected_language").cast(pl.Utf8), # New
+                    pl.lit(None).alias("detected_language_score").cast(pl.Float64) # New
                 ])
 
             # For rows that don't need translation, copy the original text and compute lengths
             df_no_translate = df_no_translate.with_columns([
                 df_no_translate[column].alias("translated_text"),
                 pl.col(column).map_elements(lambda x: [len(x)] if x else [0], return_dtype=pl.List(pl.Int64)).alias("source_text_length"),
-                pl.col(column).map_elements(lambda x: [len(x)] if x else [0], return_dtype=pl.List(pl.Int64)).alias("translated_text_length")
+                pl.col(column).map_elements(lambda x: [len(x)] if x else [0], return_dtype=pl.List(pl.Int64)).alias("translated_text_length"),
+                df_no_translate["comments_language_id"].alias("detected_language"), # Use existing language for non-translated
+                pl.lit(1.0).alias("detected_language_score").cast(pl.Float64) # Assume high confidence for known language
             ])
 
             # Combine both parts and sort to maintain original order
@@ -232,11 +256,11 @@ class Translator:
 
 # if __name__ == "__main__":
 #     # file = "Infinitas SEP 2023- text comments"
-#     file = "Accenture TGPS FEB 2024- text comments_detected"
+#     file = "MIS menuju SSOT JUL 2024- text comments_detected"
 
 #     translator_instance = Translator(
 #         input_path=f"./data/src/{file}.csv",
-#         mini_batch_size=20  # Set your desired mini-batch size here.
+#         mini_batch_size=50  # Set your desired mini-batch size here.
 #     )
 
 #     # Process the translation for the 'comments' column using our explicit mini-batch approach.

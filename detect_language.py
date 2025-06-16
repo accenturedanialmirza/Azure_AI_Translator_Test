@@ -8,9 +8,9 @@ languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANIS
 detector = LanguageDetectorBuilder.from_languages(*languages).build()
 # language = detector.detect_language_of("Smoga kedepan agar lebih ditingkatkan lagi terkait training dan pelatihan utk meningkatkan pencapaian kinerja unit")
 
-file = "text-zh-simplified"
+# file = "Infinitas SEP 2023- text comments"
 
-df = pl.scan_csv(f'./data/src/{file}.csv')
+# df = pl.scan_csv(f'./data/src/{file}.csv')
 
 # Define a function to detect language and return the ISO code
 def _detect_language_iso(text: str) -> str:
