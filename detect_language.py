@@ -23,8 +23,6 @@ def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
     # Load the LazyFrame and add the language detection column
     lf = df.with_columns([
             pl.col("comments").map_elements(_detect_language_iso, return_dtype=pl.String).alias("comments_language_id")
-        ]).with_columns([
-            pl.lit(True).alias("verified")
         ])
 
     return lf

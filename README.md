@@ -1,136 +1,177 @@
-# Project Documentation: Azure AI Translator and Spam Detection
+# Azure AI Translator Project
 
-This project demonstrates the use of Azure AI Translator API for text translation, integrates with Polars DataFrames for efficient data processing, and includes a spam detection module.
+This project offers a robust and efficient solution for processing and translating text comments using Azure AI Translator services. It leverages the Polars data manipulation library for high-performance operations, making it suitable for large datasets. The pipeline integrates functionalities for language detection, text translation with intelligent mini-batch processing, spam detection, and precise text splitting.
 
-## 1. Project Objective
+## Project Overview
 
-The primary objectives of this project are:
+The core workflow is orchestrated by the [`main.py`](main.py) script, which executes the following steps:
 
-*   **Testing Azure AI Translator API**: To evaluate the capabilities of the Azure AI Translator API for language translation.
-*   **Efficient Data Processing with Polars**: To leverage the Polars DataFrame library for high-performance data manipulation and analysis.
-*   **Spam Detection**: To classify comments as spam or not spam using a pre-trained model.
+1.  **Data Ingestion**: Reads input comment data from a specified CSV file.
+2.  **Language Detection**: Utilizes the `detect_language.py` module to identify the language of each comment. This step is crucial for optimizing translation API calls.
+3.  **Text Translation**: Translates comments to English (or other specified languages) using Azure AI Translator. The `translator_copilot_lazy.py` module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
+4.  **Text Splitting**: The `split_texts.py` module is used to accurately split both original and translated texts into individual sentences, preserving the context and order.
+5.  **Spam Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_spam.py`) to classify them as spam or legitimate.
+6.  **Data Output**: The processed and enriched data, including translated texts and spam classifications, is saved into Parquet files in a structured output directory for subsequent analysis or integration.
 
-## 2. Key Features and Results
+## Setup
 
-*   **Successful Translation**: The project successfully translates Chinese text into English, including the ability to obtain sentence break lengths.
-*   **Data Persistence**: Translated results are efficiently saved into Parquet files. CSV format is avoided due to its limitations with nested data structures.
-*   **Language Detection**: Automatically detects the language of input text.
-*   **Text Splitting**: Splits source and translated texts into individual sentences for detailed analysis.
-
-## 3. Project Structure
-
-The project is organized into several Python modules, each responsible for a specific part of the workflow:
-
-*   [`main.py`](main.py): The main entry point of the application, orchestrating the language detection, translation, text splitting, and spam detection processes.
-*   [`translator_copilot_lazy.py`](translator_copilot_lazy.py): Contains the `Translator` class responsible for handling Azure AI Translator API calls and processing translations in a lazy, mini-batch approach using Polars.
-*   [`detect_language.py`](detect_language.py): Implements the `df_language_verified` function for detecting the language of text within a Polars DataFrame.
-*   [`detect_spam.py`](detect_spam.py): Provides the `classify_comment` function for identifying spam comments using a pre-trained Naive Bayes model.
-*   [`split_texts.py`](split_texts.py): Contains functions like `split_text` and `split_sentences_into_rows` for breaking down texts into sentences and restructuring DataFrames.
-*   [`check_batch_size.py`](check_batch_size.py): Utility for validating and managing batch sizes for API calls, ensuring efficient data transfer.
-*   [`translator_gemini.py`](translator_gemini.py): An alternative translator module, potentially for integrating with Google Gemini API or other translation services.
-*   [`translator.py`](translator.py): A foundational translator module, possibly serving as a base for other translator implementations.
-*   [`test_azure_sample.ipynb`](test_azure_sample.ipynb): Jupyter notebook for testing Azure AI Translator API samples.
-*   [`test_translator.py`](test_translator.py): Unit tests for the translator functionalities.
-
-### Data Directory
-
-*   `data/src/`: Contains source CSV files for processing.
-*   `data/prod/`: Stores processed and translated data in Parquet format.
-
-### Spam Detection Module
-
-*   `spam-detection/`: Directory containing assets and notebooks for the spam detection module.
-    *   [`comment_hide_classifier.joblib`](spam-detection/comment_hide_classifier.joblib): The serialized machine learning model used for classifying comments.
-    *   [`model-category.ipynb`](spam-detection/model-category.ipynb): Jupyter notebook for exploring and categorizing spam detection models.
-    *   [`model-pipeline-category.ipynb`](spam-detection/model-pipeline-category.ipynb): Jupyter notebook detailing the pipeline for model training and evaluation.
-    *   [`youtube-comment-spam-detection-max-94-89.ipynb`](spam-detection/youtube-comment-spam-detection-max-94-89.ipynb): Jupyter notebook showcasing a spam detection model with a maximum accuracy of 94.89%.
-    *   [`youtube-comments-spam-detection-f1-score-96.ipynb`](spam-detection/youtube-comments-spam-detection-f1-score-96.ipynb): Jupyter notebook focusing on a spam detection model achieving an F1-score of 96%.
-    *   `catboost_info/`: Directory containing training logs and information for CatBoost models, if used.
-
-## 4. Setup and Installation
-
-To set up and run this project, follow these steps:
-
-### Prerequisites
-
-*   Python 3.8+
-*   Azure subscription with Azure AI Translator resource configured.
-*   Environment variables for Azure AI Translator API key and endpoint.
-
-### Installation
+To get this project up and running, follow these steps:
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-repo/Azure_AI_Translator_Test.git
-    cd Azure_AI_Translator_Test
+    git clone https://github.com/your-repo/azure-ai-translator-project.git
+    cd azure-ai-translator-project
     ```
 
-2.  **Create a virtual environment** (recommended):
+2.  **Create a virtual environment** (highly recommended to manage dependencies):
     ```bash
     python -m venv venv
     source venv/bin/activate  # On Windows: `venv\Scripts\activate`
     ```
 
 3.  **Install dependencies**:
+    All required Python packages are listed in `requirements.txt`.
     ```bash
     pip install -r requirements.txt
     ```
 
-### Configuration
+4.  **Configure Azure AI Translator**:
+    *   You need an Azure AI Translator key and endpoint. Obtain these from your Azure portal by creating or accessing an Azure AI Translator resource.
+    *   Create a new file named `.env` in the root directory of your project.
+    *   Add your Azure credentials to the `.env` file in the following format:
+        ```
+        AZURE_TEXT_TRANSLATION_KEY="YOUR_AZURE_TRANSLATOR_KEY"
+        AZURE_TEXT_TRANSLATION_ENDPOINT="YOUR_AZURE_TRANSLATOR_ENDPOINT"
+        ```
+    *   **Important**: Ensure the `location` variable within [`translator_copilot_lazy.py`](translator_copilot_lazy.py) (around line 20) is updated to match the region of your Azure Translator resource (e.g., "eastus", "westeurope"). This is critical for successful API communication.
 
-Create a `.env` file in the root directory of the project and add your Azure AI Translator API key and endpoint:
+## Usage
 
-```
-AZURE_TRANSLATOR_KEY="your_azure_translator_key"
-AZURE_TRANSLATOR_ENDPOINT="your_azure_translator_endpoint"
-AZURE_TRANSLATOR_REGION="your_azure_translator_region" # e.g., "eastus"
-```
-
-## 5. Usage
-
-To run the main translation and spam detection workflow:
+To execute the full translation and processing pipeline, run the [`main.py`](main.py) script from your project's root directory:
 
 ```bash
 python main.py
 ```
 
-This will:
-1.  Read the input CSV file (`MIS menuju SSOT JUL 2024- text comments.csv`) from `./data/src/`.
-2.  Detect the language of comments and save the result to `./data/src/MIS menuju SSOT JUL 2024- text comments_detected.csv`.
-3.  Translate the comments using Azure AI Translator API.
-4.  Split the source and translated texts into sentences.
-5.  Classify translated comments as spam or not spam.
-6.  Save the translated and spam-detected data to `./data/prod/MIS menuju SSOT JUL 2024- text comments_translated_lazy.parquet`.
-7.  Further split the sentences into individual rows and save to `./data/prod/MIS menuju SSOT JUL 2024- text comments_translated_split_lazy.parquet`.
+Before running, you may need to adjust the input file path within [`main.py`](main.py). By default, it expects a CSV file (e.g., `MIS menuju SSOT JUL 2024- text comments.csv`) located in the `./data/src/` directory.
 
-## 6. Dependencies
+Upon successful execution, the script will:
+*   Read the specified input CSV file.
+*   Generate intermediate Parquet files in the `./data/temp/` directory (these are cleaned up automatically upon completion).
+*   Produce final processed Parquet files in the `./data/prod/` directory, containing the translated comments and other relevant data.
 
-The project relies on the following key Python libraries, as specified in [`requirements.txt`](requirements.txt):
+## Custom Modules
 
-*   `polars`: For high-performance DataFrame operations and efficient data manipulation.
-*   `requests`: For making HTTP requests, primarily to the Azure AI Translator API.
-*   `python-dotenv`: For loading environment variables from a `.env` file.
-*   `numpy`: Fundamental package for numerical computing in Python.
-*   `pandas`: Data manipulation and analysis, often used for data loading and initial processing.
-*   `pyarrow`: Provides Python bindings for Apache Arrow, essential for Parquet file handling.
-*   `tqdm`: For displaying progress bars during iterative processes.
-*   `ipykernel`: IPython Kernel for Jupyter notebooks.
-*   `jupyter_client`: Jupyter protocol client.
-*   `jupyter_core`: Core utilities for Jupyter.
-*   `matplotlib-inline`: Matplotlib backend for inline plots in Jupyter.
-*   `mypy`: Optional static type checker for Python.
-*   `packaging`: Core utilities for Python packages.
-*   `psutil`: Cross-platform library for retrieving process and system utilization.
-*   `pygments`: A generic syntax highlighter.
-*   `python-dateutil`: Extensions to the standard `datetime` module.
-*   `pytz`: World timezone definitions for Python.
-*   `pyzmq`: Python bindings for ZeroMQ.
-*   `setuptools`: Easily download, build, install, upgrade, and uninstall Python packages.
-*   `six`: Python 2 and 3 compatibility utilities.
-*   `tornado`: A Python web framework and asynchronous networking library.
-*   `traitlets`: A configuration system for Python applications.
-*   `urllib3`: A powerful, user-friendly HTTP client for Python.
-*   `fastexcel`: For fast Excel file reading.
-*   `scikit-learn`: Machine learning library, likely used for the spam detection model.
-*   `joblib`: For serializing and deserializing Python objects, used for saving models.
-*   `catboost`: Gradient boosting library, potentially used for advanced spam detection models.
+This project is modularized into several Python scripts, each encapsulating specific functionalities.
+
+### [`translator_copilot_lazy.py`](translator_copilot_lazy.py)
+
+This module is the heart of the translation process, containing the `Translator` class responsible for efficient interaction with the Azure AI Text Translation API.
+
+*   **`Translator` Class**:
+    *   **Initialization**: Takes `input_path` (path to the source CSV file) and `mini_batch_size` as parameters. The `mini_batch_size` controls how many comments are sent per API request, crucial for managing API limits and optimizing performance.
+    *   **`translate_series(self, s: pl.Series, source_languages: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]`**:
+        *   **Purpose**: Translates a Polars Series of text comments.
+        *   **Parameters**:
+            *   `s`: A Polars Series containing the text comments to be translated.
+            *   `source_languages`: A Polars Series containing the detected language codes for each comment (e.g., "id", "fr").
+            *   `translate_to_language`: A list of target language codes (default is `['en']` for English).
+        *   **Functionality**: Dynamically sets the `from` language parameter for the Azure API call based on the detected `source_languages`, ensuring accurate translation. It returns the translated text as a Polars Series, along with the original and translated sentence lengths (useful for text splitting).
+    *   **`process_translation_lazy(self, column: str) -> pl.DataFrame`**:
+        *   **Purpose**: Manages the end-to-end translation workflow for a specified text column using Polars LazyFrames. This lazy approach is vital for handling datasets that exceed available memory.
+        *   **Parameters**:
+            *   `column`: The name of the column in the DataFrame that contains the text comments to be translated.
+        *   **Functionality**:
+            *   **Mini-Batch Processing**: Explicitly slices the LazyFrame into mini-batches. This strategy prevents API throttling and manages memory by processing data in manageable chunks.
+            *   **Conditional Translation**: Intelligently filters out rows that do not require translation (e.g., comments already detected as English if the target language is English, or comments marked as unverified).
+            *   **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, allowing the process to resume or recover from interruptions without re-processing already completed batches.
+            *   **Final Concatenation**: After all batches are processed, it concatenates all intermediate Parquet files into a single, final Polars DataFrame, which is then returned.
+
+### [`detect_language.py`](detect_language.py)
+
+This module is dedicated to identifying the natural language of text comments using the high-performance `lingua-py` library.
+
+*   **`_detect_language_iso(text: str) -> str`**:
+    *   **Purpose**: An internal helper function to detect the language of a single text string.
+    *   **Parameters**:
+        *   `text`: The input text string.
+    *   **Returns**: The ISO 639-1 language code (e.g., "en" for English, "id" for Indonesian).
+    *   **Functionality**: Uses a pre-configured `LanguageDetectorBuilder` to efficiently detect languages from a predefined list, including English, French, German, Spanish, Italian, Chinese, Japanese, Portuguese, Indonesian, Thai, and Malay.
+*   **`df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame`**:
+    *   **Purpose**: Applies language detection across a Polars LazyFrame.
+    *   **Parameters**:
+        *   `df`: The input Polars LazyFrame containing a `comments` column.
+    *   **Returns**: A new Polars LazyFrame with added language information.
+    *   **Functionality**:
+        *   Adds a new column named `comments_language_id` by applying the `_detect_language_iso` function to each entry in the `comments` column.
+        *   Adds a `verified` column, set to `True`, indicating that the language detection process has been successfully completed for these rows.
+
+### [`detect_spam.py`](detect_spam.py)
+
+This module is responsible for classifying comments as spam or not, utilizing a pre-trained machine learning model.
+
+*   **`_clean_text(text: str) -> str`**:
+    *   **Purpose**: An internal utility function for text preprocessing.
+    *   **Parameters**:
+        *   `text`: The input text string.
+    *   **Returns**: A cleaned text string.
+    *   **Functionality**: Removes URLs, special characters, and converts the text to lowercase, preparing it for model inference.
+*   **`predict_hide_comment(comments: str, sentiment_category: str) -> bool`**:
+    *   **Purpose**: Predicts whether a given comment should be hidden (classified as spam).
+    *   **Parameters**:
+        *   `comments`: The text of the comment to be classified.
+        *   `sentiment_category`: The sentiment category associated with the comment (used as a feature by the model).
+    *   **Returns**: A boolean value (`True` if the comment is predicted as spam and should be hidden, `False` otherwise).
+    *   **Functionality**: Loads a pre-trained `comment_hide_classifier.joblib` model (expected to be in the `spam-detection/` directory) and uses it to make a prediction based on the cleaned comment text and its sentiment category.
+
+### [`split_texts.py`](split_texts.py)
+
+This module provides essential utility functions for accurately splitting long texts into individual sentences, leveraging length information often provided by translation APIs.
+
+*   **`split_text(text: str, lengths: List[int]) -> List[str]`**:
+    *   **Purpose**: Splits a single text string into a list of sentences.
+    *   **Parameters**:
+        *   `text`: The complete text string to be split.
+        *   `lengths`: A list of integers, where each integer represents the length of a sentence within the `text`. This information is typically obtained from the translation API's sentence length breakdown.
+    *   **Returns**: A list of strings, where each string is a segmented sentence.
+    *   **Functionality**: Iterates through the `lengths` list, segmenting the `text` accordingly. It attempts to split at natural word boundaries (spaces) to avoid breaking words, but will force a split if no space is found within a segment to ensure all sentences are correctly extracted based on the provided lengths.
+*   **`split_sentences_into_rows(df: pl.DataFrame, source_split_column: str, translated_split_column: str) -> pl.DataFrame`**:
+    *   **Purpose**: Transforms a DataFrame by expanding rows, creating a new row for each individual sentence pair.
+    *   **Parameters**:
+        *   `df`: The input Polars DataFrame, expected to have columns containing lists of source and translated sentences.
+        *   `source_split_column`: The name of the column in `df` that contains lists of source sentences.
+        *   `translated_split_column`: The name of the column in `df` that contains lists of translated sentences.
+    *   **Returns**: A new Polars DataFrame where each original row has been expanded into multiple rows, one for each sentence pair.
+    *   **Functionality**: This function is crucial for detailed sentence-level analysis. The output DataFrame will typically include columns such as `respondent_id` (from the original comment), `sentence_index` (the index of the sentence within its original comment), `source_text` (the original sentence), and `translated_text` (the corresponding translated sentence).
+
+### [`check_batch_size.py`](check_batch_size.py)
+
+This module provides helper functions primarily for managing and verifying temporary batch files generated during the translation process, enhancing the robustness of the pipeline.
+
+*   **`check_temp_batch_size_matches(path: str, batch_size: int) -> bool`**:
+    *   **Purpose**: Verifies if a previously processed temporary batch file matches the expected batch size.
+    *   **Parameters**:
+        *   `path`: The directory path where temporary Parquet files are stored (e.g., `./data/temp/`).
+        *   `batch_size`: The expected number of rows (comments) in a batch.
+    *   **Returns**: `True` if the first Parquet file found in the specified `path` has a row count matching the `batch_size`, `False` otherwise.
+    *   **Functionality**: This function is used to determine if a specific batch has been successfully processed and saved in a previous run. This allows the main translation process to skip already completed batches, making the pipeline more resilient to interruptions and efficient for large datasets.
+*   **`remove_temp_files(path: str) -> None`**:
+    *   **Purpose**: Cleans up temporary Parquet files.
+    *   **Parameters**:
+        *   `path`: The directory path from which to remove files (e.g., `./data/temp/`).
+    *   **Functionality**: Deletes all files ending with `.parquet` within the specified directory. This is typically called after the entire translation process is complete to free up disk space, or when a new run with different parameters (like a new batch size) is initiated, requiring a fresh start.
+
+## Error Handling and Robustness
+
+The project incorporates several features to ensure robustness and efficient handling of large datasets:
+*   **Mini-Batch Processing**: Prevents API rate limit issues and manages memory by processing data in smaller, controlled chunks.
+*   **Intermediate File Storage**: Saving temporary batches to disk (`./data/temp/`) acts as a checkpointing mechanism, allowing the process to resume from the last completed batch in case of interruptions.
+*   **LazyFrame Operations**: Utilizing Polars LazyFrames ensures that data is processed efficiently without loading the entire dataset into memory, which is critical for very large inputs.
+
+## Future Enhancements
+
+*   **Support for Multiple Target Languages**: Extend the `Translator` class to easily support translation into multiple languages simultaneously in a single run.
+*   **Configurability**: Externalize more parameters (e.g., input/output paths, column names, supported languages for detection) into a configuration file (e.g., YAML or JSON) for easier customization without code modification.
+*   **Performance Monitoring**: Integrate logging and metrics to monitor API call performance, processing times, and resource utilization.
+*   **Advanced Spam Detection**: Explore integrating more sophisticated spam detection models or real-time feedback loops.
+*   **Dockerization**: Provide a Dockerfile for easy containerization and deployment of the application.

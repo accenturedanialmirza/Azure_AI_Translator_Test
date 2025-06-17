@@ -135,7 +135,7 @@ class Translator:
         """
         # Create a LazyFrame by lazily scanning the CSV.
         # Only selects respondent id and comments columns
-        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments", "comments_language_id", "verified", "question code",	"hide comment", "sentiment category"])
+        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments", "comments_language_id", "question code",	"hide comment", "sentiment category"])
 
         # First, determine total row count without fully materializing data.
         total_rows = lf.select(pl.len()).collect().item()
@@ -145,7 +145,6 @@ class Translator:
             "respondent id": pl.Int64,
             "comments": pl.Utf8,
             "comments_language_id": pl.Utf8,
-            "verified": pl.Boolean,
             "question code": pl.Utf8,
             "hide comment": pl.Boolean,
             "sentiment category": pl.Utf8,
@@ -162,7 +161,7 @@ class Translator:
                 raise ValueError(f"DataFrame must contain a '{column}' column.")
 
             # Determine which rows need translation
-            needs_translation_mask = (df["comments_language_id"] != "en") | (df["comments_language_id"] == "unknown") & (df["verified"] == True)
+            needs_translation_mask = (df["comments_language_id"] != "en") | (df["comments_language_id"] == "unknown")
 
             # Split the DataFrame
             df_to_translate = df.filter(needs_translation_mask)
