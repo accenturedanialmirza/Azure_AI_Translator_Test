@@ -7,7 +7,7 @@ import re
 
 if __name__ == "__main__":
 
-    file = "MIS menuju SSOT JUL 2024- text comments"
+    file = "Infinitas SEP 2023- text comments"
 
     # detect language
     df = pl.scan_csv(f'./data/src/{file}.csv')
