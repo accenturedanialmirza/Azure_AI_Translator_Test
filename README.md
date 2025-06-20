@@ -8,10 +8,10 @@ The core workflow is orchestrated by the [`main.py`](main.py) script, which exec
 
 1.  **Data Ingestion**: Reads input comment data from a specified CSV file.
 2.  **Language Detection**: Utilizes the `detect_language.py` module to identify the language of each comment. This step is crucial for optimizing translation API calls.
-3.  **Text Translation**: Translates comments to English (or other specified languages) using Azure AI Translator. The `translator_copilot_lazy.py` module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
-4.  **Text Splitting**: The `split_texts.py` module is used to accurately split both original and translated texts into individual sentences, preserving the context and order.
+3.  **Text Translation**: Dynamically determines an optimal mini-batch size using [`decide_batch_size.py`](decide_batch_size.py) and then translates comments to English (or other specified languages) using Azure AI Translator. The [`translator_copilot_lazy.py`](translator_copilot_lazy.py) module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
+4.  **Text Splitting**: The [`split_texts.py`](split_texts.py) module is used in two stages: first, to accurately split both original and translated texts into lists of individual sentences within the DataFrame, and then to expand these lists into new rows, creating a detailed sentence-level view while preserving context and order.
 5.  **Non-Informative Comment Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_non_informative.py`) to classify them as non-informative or legitimate.
-6.  **Data Output**: The processed and enriched data, including translated texts and spam classifications, is saved into Parquet files in a structured output directory for subsequent analysis or integration.
+6.  **Data Output**: The processed and enriched data is saved into two Parquet files in the `./data/prod/` directory: `_translated_lazy.parquet` (containing translated comments and non-informative classifications) and `_translated_split_lazy.parquet` (containing individual source and translated sentences).
 
 ## Setup
 
@@ -83,8 +83,8 @@ This module is the heart of the translation process, containing the `Translator`
             *   `column`: The name of the column in the DataFrame that contains the text comments to be translated.
         *   **Functionality**:
             *   **Mini-Batch Processing**: Explicitly slices the LazyFrame into mini-batches. This strategy prevents API throttling and manages memory by processing data in manageable chunks.
-            *   **Conditional Translation**: Intelligently filters out rows that do not require translation (e.g., comments already detected as English if the target language is English, or comments marked as unverified).
-            *   **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, allowing the process to resume or recover from interruptions without re-processing already completed batches.
+            *   **Conditional Translation**: Intelligently filters out rows that do not require translation (e.g., comments already detected as English if the target language is English, or comments whose language is 'unknown').
+            *   **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, leveraging [`check_batch_size.py`](check_batch_size.py) to allow the process to resume or recover from interruptions without re-processing already completed batches, and to ensure temporary files are consistent with the current batch size.
             *   **Final Concatenation**: After all batches are processed, it concatenates all intermediate Parquet files into a single, final Polars DataFrame, which is then returned.
 
 ### [`detect_language.py`](detect_language.py)
@@ -104,7 +104,6 @@ This module is dedicated to identifying the natural language of text comments us
     *   **Returns**: A new Polars LazyFrame with added language information.
     *   **Functionality**:
         *   Adds a new column named `comments_language_id` by applying the `_detect_language_iso` function to each entry in the `comments` column.
-        *   Adds a `verified` column, set to `True`, indicating that the language detection process has been successfully completed for these rows.
 
 ### [`detect_non_informative.py`](detect_non_informative.py)
 
