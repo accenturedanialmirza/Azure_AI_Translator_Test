@@ -1,24 +1,28 @@
-from translator_copilot_lazy import Translator
+from decide_batch_size import decide_batch_size
 from detect_language import df_language_verified
-from detect_spam import predict_hide_comment
+from translator_copilot_lazy import Translator
+
+from detect_non_informative import predict_non_informative_comment
 from split_texts import split_text, split_sentences_into_rows
 import polars as pl
 import re
 
 if __name__ == "__main__":
 
-    file = "Infinitas SEP 2023- text comments"
+    file = "Accenture TGPS FEB 2024- text comments"
+    file_detected = f"./data/src/{file}_detected.csv"
 
     # detect language
     df = pl.scan_csv(f'./data/src/{file}.csv')
-    df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
+    df_language_verified(df).sink_csv(file_detected)
 
-    file_detected = f"./data/src/{file}_detected.csv"
+    # decide batch size
+    automated_mini_batch_size = decide_batch_size(df)
 
     # translate the sentences
     translator_instance = Translator(
         input_path=file_detected,
-        mini_batch_size=100  # Set your desired mini-batch size here.
+        mini_batch_size=automated_mini_batch_size # Use the automated batch size
     )
 
     # Process the translation for the 'comments' column using our explicit mini-batch approach.
@@ -32,7 +36,7 @@ if __name__ == "__main__":
 
     # detect spam
     processed_df = processed_df.with_columns([
-                    pl.struct(["translated_text", "sentiment category"]).map_elements(lambda row: predict_hide_comment(row["translated_text"], row["sentiment category"]), return_dtype=pl.Boolean).alias("is_spam")
+                    pl.struct(["translated_text", "sentiment category"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"], row["sentiment category"]), return_dtype=pl.Boolean).alias("is_non_informative")
                 ])
 
     processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")

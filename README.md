@@ -10,7 +10,7 @@ The core workflow is orchestrated by the [`main.py`](main.py) script, which exec
 2.  **Language Detection**: Utilizes the `detect_language.py` module to identify the language of each comment. This step is crucial for optimizing translation API calls.
 3.  **Text Translation**: Translates comments to English (or other specified languages) using Azure AI Translator. The `translator_copilot_lazy.py` module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
 4.  **Text Splitting**: The `split_texts.py` module is used to accurately split both original and translated texts into individual sentences, preserving the context and order.
-5.  **Spam Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_spam.py`) to classify them as spam or legitimate.
+5.  **Non-Informative Comment Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_non_informative.py`) to classify them as non-informative or legitimate.
 6.  **Data Output**: The processed and enriched data, including translated texts and spam classifications, is saved into Parquet files in a structured output directory for subsequent analysis or integration.
 
 ## Setup
@@ -106,23 +106,17 @@ This module is dedicated to identifying the natural language of text comments us
         *   Adds a new column named `comments_language_id` by applying the `_detect_language_iso` function to each entry in the `comments` column.
         *   Adds a `verified` column, set to `True`, indicating that the language detection process has been successfully completed for these rows.
 
-### [`detect_spam.py`](detect_spam.py)
+### [`detect_non_informative.py`](detect_non_informative.py)
 
-This module is responsible for classifying comments as spam or not, utilizing a pre-trained machine learning model.
+This module is responsible for classifying comments as non-informative or not, utilizing a pre-trained machine learning model.
 
-*   **`_clean_text(text: str) -> str`**:
-    *   **Purpose**: An internal utility function for text preprocessing.
-    *   **Parameters**:
-        *   `text`: The input text string.
-    *   **Returns**: A cleaned text string.
-    *   **Functionality**: Removes URLs, special characters, and converts the text to lowercase, preparing it for model inference.
-*   **`predict_hide_comment(comments: str, sentiment_category: str) -> bool`**:
-    *   **Purpose**: Predicts whether a given comment should be hidden (classified as spam).
+*   **`predict_non_informative_comment(comments: str, sentiment_category: str) -> bool`**:
+    *   **Purpose**: Predicts whether a given comment should be classified as non-informative.
     *   **Parameters**:
         *   `comments`: The text of the comment to be classified.
         *   `sentiment_category`: The sentiment category associated with the comment (used as a feature by the model).
-    *   **Returns**: A boolean value (`True` if the comment is predicted as spam and should be hidden, `False` otherwise).
-    *   **Functionality**: Loads a pre-trained `comment_hide_classifier.joblib` model (expected to be in the `spam-detection/` directory) and uses it to make a prediction based on the cleaned comment text and its sentiment category.
+    *   **Returns**: A boolean value (`True` if the comment is predicted as non-informative and should be hidden, `False` otherwise).
+    *   **Functionality**: Loads a pre-trained `comment_hide_classifier.joblib` model (expected to be in the `spam-detection/` directory) and uses it to make a prediction based on the comment text and its sentiment category.
 
 ### [`split_texts.py`](split_texts.py)
 
@@ -173,5 +167,5 @@ The project incorporates several features to ensure robustness and efficient han
 *   **Support for Multiple Target Languages**: Extend the `Translator` class to easily support translation into multiple languages simultaneously in a single run.
 *   **Configurability**: Externalize more parameters (e.g., input/output paths, column names, supported languages for detection) into a configuration file (e.g., YAML or JSON) for easier customization without code modification.
 *   **Performance Monitoring**: Integrate logging and metrics to monitor API call performance, processing times, and resource utilization.
-*   **Advanced Spam Detection**: Explore integrating more sophisticated spam detection models or real-time feedback loops.
+*   **Advanced Non-Informative Comment Detection**: Explore integrating more sophisticated models or real-time feedback loops for non-informative comment detection.
 *   **Dockerization**: Provide a Dockerfile for easy containerization and deployment of the application.
