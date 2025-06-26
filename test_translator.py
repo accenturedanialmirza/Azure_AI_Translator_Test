@@ -17,8 +17,8 @@ constructed_url = endpoint + path
 
 params = {
     'api-version': '3.0',
-    'from': 'en',
-    'to': ['fr', 'zu']
+    'from': 'th',
+    'to': ['en']
 }
 
 headers = {
@@ -31,7 +31,7 @@ headers = {
 
 # You can pass more than one object in body.
 body = [{
-    'text': 'I would really like to drive your car around the block a few times!'
+    'text': 'เทคโนโลยีในปัจจุบนี้ค่อนข้างเปลี่ยนไปอย่างรวดเร็ว การธนาคารจึงต้องปรับเปลี่ยน ปรับปรุงให้เท่ากันยุดสมัยอยู่เสมอ จึงเป็นเรื่องท้าทายสำหรับพนักงานในองค์กร ที่ต้องพัฒนาตัวเองให้ไว ให้ดี เท่ากันเทคโนโลยี เพื่อนำมาใช้ในงานให้เกิดประโยชน์สูงสุดแก่ธนาคารและลูกค้า ในฐานะพนักงานยอมรับว่ามีความกดดันและความเครียดค่อนข้างสูงแต่จะพยายามอย่างสุดความสามารถค่ะ'
 }]
 
 request = requests.post(constructed_url, params=params, headers=headers, json=body)

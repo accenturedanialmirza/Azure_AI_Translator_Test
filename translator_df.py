@@ -5,7 +5,7 @@ from typing import List, Tuple, Optional, Any
 from dotenv import load_dotenv
 from tqdm import tqdm
 # from detect_language import df_language_verified
-from split_texts import split_text, split_sentences_into_rows
+# from split_texts import split_text, split_sentences_into_rows
 from check_batch_size import check_temp_batch_size_matches, remove_temp_files
 # from detect_spam import classify_comment
 
@@ -43,15 +43,11 @@ class Translator:
         original_indices = []
         texts_list: List[Optional[str]] = s.to_list()
         source_lang_list: List[Optional[str]] = source_languages.to_list()
-        
-        valid_source_langs_for_this_api_call = set()
 
         for i, (text, lang) in enumerate(zip(texts_list, source_lang_list)):
             if text is not None: # Polars Null becomes Python None in to_list()
                 request_data.append({"text": str(text)})
                 original_indices.append(i)
-                if lang is not None and isinstance(lang, str) and lang.lower() != "unknown":
-                    valid_source_langs_for_this_api_call.add(lang)
 
         # Handle the case of no valid texts.
         if not request_data:
@@ -67,12 +63,8 @@ class Translator:
             "api-version": "3.0",
             "to": translate_to_language,
             "includeSentenceLength": True,
-            "toScript": "latn" # Added for transliteration
+            # "toScript": "latn" # Added for transliteration
         }
-
-        # If all texts to be translated in this batch share a single, known source language, set the 'from' parameter.
-        if len(valid_source_langs_for_this_api_call) == 1:
-            params["from"] = valid_source_langs_for_this_api_call.pop()
 
         headers = {
             "Ocp-Apim-Subscription-Key": key,
@@ -100,11 +92,10 @@ class Translator:
                     translated_text = item["translations"][0]["text"]
                     source_text_length = item['translations'][0]['sentLen']['srcSentLen']
                     translated_length = item["translations"][0]["sentLen"]["transSentLen"]
-                    
-                    # New: Extract detected language and score
-                    detected_language = item.get("detectedLanguage", {}).get("language")
-                    detected_language_score = item.get("detectedLanguage", {}).get("score")
 
+                    detected_language = item.get("detectedLanguage", {}).get("language", None)
+                    detected_language_score = item.get("detectedLanguage", {}).get("score", None)
+                    
                     translated_texts[original_idx] = translated_text
                     source_lengths[original_idx] = source_text_length
                     translated_lengths[original_idx] = translated_length
@@ -161,7 +152,7 @@ class Translator:
                 raise ValueError(f"DataFrame must contain a '{column}' column.")
 
             # Determine which rows need translation
-            needs_translation_mask = (df["comments_language_id"] != "en") | (df["comments_language_id"] == "unknown")
+            needs_translation_mask = (df["comments_language_id"].is_null()) | (~df["comments_language_id"].is_in(["unknown", "en"]))
 
             # Split the DataFrame
             df_to_translate = df.filter(needs_translation_mask)
@@ -253,27 +244,27 @@ class Translator:
 
         return final_df
 
-# if __name__ == "__main__":
-#     # file = "Infinitas SEP 2023- text comments"
-#     file = "MIS menuju SSOT JUL 2024- text comments_detected"
+if __name__ == "__main__":
+    file = "Infinitas SEP 2023- text comments"
+    # file = "MIS menuju SSOT JUL 2024- text comments_detected"
 
-#     translator_instance = Translator(
-#         input_path=f"./data/src/{file}.csv",
-#         mini_batch_size=50  # Set your desired mini-batch size here.
-#     )
+    translator_instance = Translator(
+        input_path=f"./data/src/{file}_detected.csv",
+        mini_batch_size=50  # Set your desired mini-batch size here.
+    )
 
-#     # Process the translation for the 'comments' column using our explicit mini-batch approach.
-#     processed_df =  translator_instance.process_translation_lazy(column="comments")
+    # Process the translation for the 'comments' column using our explicit mini-batch approach.
+    processed_df =  translator_instance.process_translation_lazy(column="comments")
+    processed_df
+    # processed_df = processed_df.with_columns([
+    #                 pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
+    #             ]).with_columns([
+    #                 pl.struct(["translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("translated_split_texts")
+    #             ])
 
-#     processed_df = processed_df.with_columns([
-#                     pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
-#                 ]).with_columns([
-#                     pl.struct(["translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("translated_split_texts")
-#                 ])
+    # processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
 
-#     processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
+    # # df.with_columns(pl.col("translated_text").map_elements(lambda text: classify_comment(text), return_dtype=pl.Boolean).alias("is_spam"))
 
-#     # df.with_columns(pl.col("translated_text").map_elements(lambda text: classify_comment(text), return_dtype=pl.Boolean).alias("is_spam"))
-
-#     final_df = split_sentences_into_rows(processed_df, "source_split_texts", "translated_split_texts")
-#     final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")
+    # final_df = split_sentences_into_rows(processed_df, "source_split_texts", "translated_split_texts")
+    # final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")

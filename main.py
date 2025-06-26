@@ -1,6 +1,6 @@
 from decide_batch_size import decide_batch_size
 from detect_language import df_language_verified
-from translator_copilot_lazy import Translator
+from translator_df import Translator
 
 from detect_non_informative import predict_non_informative_comment
 from split_texts import split_text, split_sentences_into_rows
@@ -9,12 +9,12 @@ import re
 
 if __name__ == "__main__":
 
-    file = "Accenture TGPS FEB 2024- text comments"
+    file = "Infinitas SEP 2023- text comments"
     file_detected = f"./data/src/{file}_detected.csv"
 
-    # detect language
+    # # detect language
     df = pl.scan_csv(f'./data/src/{file}.csv')
-    df_language_verified(df).sink_csv(file_detected)
+    # df_language_verified(df).sink_csv(file_detected)
 
     # decide batch size
     automated_mini_batch_size = decide_batch_size(df)
