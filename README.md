@@ -8,7 +8,7 @@ The core workflow is orchestrated by the [`main.py`](main.py) script, which exec
 
 1. **Data Ingestion**: Reads input comment data from a specified CSV file.
 2. **Language Detection**: Utilizes the `detect_language.py` module to identify the language of each comment. This step is crucial for optimizing translation API calls.
-3. **Text Translation**: Dynamically determines an optimal mini-batch size using [`decide_batch_size.py`](decide_batch_size.py) and then translates comments to English (or other specified languages) using Azure AI Translator. The [`translator.py`](translator.py) module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
+3. **Text Translation**: Dynamically determines an optimal mini-batch size using [`decide_batch_size.py`](decide_batch_size.py) and then translates comments to English (or other specified languages) using Azure AI Translator. The [`modules/translator_df.py`](modules/translator_df.py) module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
 4. **Text Splitting**: The [`split_texts.py`](split_texts.py) module is used in two stages: first, to accurately split both original and translated texts into lists of individual sentences within the DataFrame, and then to expand these lists into new rows, creating a detailed sentence-level view while preserving context and order.
 5. **Non-Informative Comment Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_non_informative.py`) to classify them as non-informative or legitimate.
 6. **Data Output**: The processed and enriched data is saved into two Parquet files in the `./data/prod/` directory: `_translated_lazy.parquet` (containing translated comments and non-informative classifications) and `_translated_split_lazy.parquet` (containing individual source and translated sentences).
@@ -43,7 +43,7 @@ To get this project up and running, follow these steps:
         AZURE_TEXT_TRANSLATION_KEY="YOUR_AZURE_TRANSLATOR_KEY"
         AZURE_TEXT_TRANSLATION_ENDPOINT="YOUR_AZURE_TRANSLATOR_ENDPOINT"
         ```
-    * **Important**: Ensure the `location` variable within [`translator.py`](translator.py) (around line 20) is updated to match the region of your Azure Translator resource (e.g., "eastus", "westeurope"). This is critical for successful API communication.
+    * **Important**: Ensure the `location` variable within [`modules/translator_df.py`](modules/translator_df.py) (around line 20) is updated to match the region of your Azure Translator resource (e.g., "eastus", "westeurope"). This is critical for successful API communication.
 
 ## Usage
 
@@ -53,7 +53,7 @@ To execute the full translation and processing pipeline, run the [`main.py`](mai
 python main.py
 ```
 
-Before running, you may need to adjust the input file path within [`main.py`](main.py). By default, it expects a CSV file (e.g., `MIS menuju SSOT JUL 2024- text comments.csv`) located in the `./data/src/` directory.
+Before running, you may need to adjust the input file path within [`main.py`](main.py). By default, it expects a CSV file (e.g., `Infinitas SEP 2023- text comments.csv`) located in the `./data/src/` directory.
 
 Upon successful execution, the script will:
 * Read the specified input CSV file.
@@ -62,21 +62,38 @@ Upon successful execution, the script will:
 
 ## Custom Modules
 
+### [`translator_gemini.py`](translator_gemini.py)
+
+This module provides an alternative `Translator` class, offering a simpler, non-lazy approach to translation for smaller datasets or specific use cases where the full lazy-loading and batching mechanism of `modules/translator_df.py` is not required. It includes basic functionalities for creating DataFrames, translating series, and splitting texts.
+
+* **`Translator` Class**:
+    * **Initialization**: Accepts `input_path` for data handling.
+    * **`create_df(self) -> pl.DataFrame`**:
+        * **Purpose**: Creates a Polars DataFrame from the input data.
+    * **`translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]`**:
+        * **Purpose**: Translates a series of text comments using the Azure AI Translator API.
+        * **Returns**: A tuple containing the translated text series, source sentence lengths, and translated sentence lengths.
+    * **`process_translation(self, column: str) -> pl.DataFrame`**:
+        * **Purpose**: Manages the translation workflow for a specified column, applying `translate_series` directly.
+    * **`split_text(self, text: str, lengths: List[int]) -> List[str]`**:
+        * **Purpose**: Splits text into sentences based on provided lengths.
+    * **`split_sentences_into_rows(self, df: pl.DataFrame, source_split_column: str, translated_split_column: str) -> pl.DataFrame`**:
+        * **Purpose**: Expands DataFrame rows for detailed sentence-level analysis, creating a new row for each individual sentence pair.
+
 This project is modularized into several Python scripts, each encapsulating specific functionalities.
 
-### [`translator.py`](translator.py)
+### [`modules/translator_df.py`](modules/translator_df.py)
 
 This module is the heart of the translation process, containing the `Translator` class responsible for efficient interaction with the Azure AI Text Translation API.
 
 * **`Translator` Class**:
     * **Initialization**: Takes `input_path` (path to the source CSV file) and `mini_batch_size` as parameters. The `mini_batch_size` controls how many comments are sent per API request, crucial for managing API limits and optimizing performance.
-    * **`translate_series(self, s: pl.Series, source_languages: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]`**:
+    * **`translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series, pl.Series, pl.Series]`**:
         * **Purpose**: Translates a Polars Series of text comments.
         * **Parameters**:
             * `s`: A Polars Series containing the text comments to be translated.
-            * `source_languages`: A Polars Series containing the detected language codes for each comment (e.g., "id", "fr").
             * `translate_to_language`: A list of target language codes (default is `['en']` for English).
-        * **Functionality**: Dynamically sets the `from` language parameter for the Azure API call based on the detected `source_languages`, ensuring accurate translation. It returns the translated text as a Polars Series, along with the original and translated sentence lengths (useful for text splitting).
+        * **Functionality**: Returns the translated text as a Polars Series, along with the original and translated sentence lengths (useful for text splitting), and detected language and its score.
     * **`process_translation_lazy(self, column: str) -> pl.DataFrame`**:
         * **Purpose**: Manages the end-to-end translation workflow for a specified text column using Polars LazyFrames. This lazy approach is vital for handling datasets that exceed available memory.
         * **Parameters**:
@@ -84,7 +101,7 @@ This module is the heart of the translation process, containing the `Translator`
         * **Functionality**:
             * **Mini-Batch Processing**: Explicitly slices the LazyFrame into mini-batches. This strategy prevents API throttling and manages memory by processing data in manageable chunks.
             * **Conditional Translation**: Intelligently filters out rows that do not require translation (e.g., comments already detected as English if the target language is English, or comments whose language is 'unknown').
-            * **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, leveraging [`check_batch_size.py`](check_batch_size.py) to allow the process to resume or recover from interruptions without re-processing already completed batches, and to ensure temporary files are consistent with the current batch size.
+            * **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, leveraging [`modules/check_batch_size.py`](modules/check_batch_size.py) to allow the process to resume or recover from interruptions without re-processing already completed batches, and to ensure temporary files are consistent with the current batch size.
             * **Final Concatenation**: After all batches are processed, it concatenates all intermediate Parquet files into a single, final Polars DataFrame, which is then returned.
 
 ### [`detect_language.py`](detect_language.py)
@@ -163,6 +180,8 @@ The project incorporates several features to ensure robustness and efficient han
 
 ## Future Enhancements
 
+* **Enhanced Language Detection Output**: The `Translator` class now provides detected language and its confidence score, which can be leveraged for further analysis or filtering.
+* **Enhanced Language Detection Output**: The `Translator` class now provides detected language and its confidence score, which can be leveraged for further analysis or filtering.
 * **Support for Multiple Target Languages**: Extend the `Translator` class to easily support translation into multiple languages simultaneously in a single run.
 * **Configurability**: Externalize more parameters (e.g., input/output paths, column names, supported languages for detection) into a configuration file (e.g., YAML or JSON) for easier customization without code modification.
 * **Performance Monitoring**: Integrate logging and metrics to monitor API call performance, processing times, and resource utilization.
