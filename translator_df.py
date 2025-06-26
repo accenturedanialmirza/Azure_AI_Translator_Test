@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 # from detect_language import df_language_verified
 # from split_texts import split_text, split_sentences_into_rows
-from check_batch_size import check_temp_batch_size_matches, remove_temp_files
+from modules.check_batch_size import check_temp_batch_size_matches, remove_temp_files
 # from detect_spam import classify_comment
 
 load_dotenv('.env')
