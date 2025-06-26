@@ -1,6 +1,6 @@
 from modules.decide_batch_size import decide_batch_size
 from detect_language import df_language_verified
-from translator_df import Translator
+from modules.translator_df import Translator
 
 from detect_non_informative import predict_non_informative_comment
 from modules.split_texts import split_text, split_sentences_into_rows
@@ -9,7 +9,7 @@ import re
 
 if __name__ == "__main__":
 
-    file = "MIS menuju SSOT JUL 2024- text comments"
+    file = "Infinitas SEP 2023- text comments"
     file_detected = f"./data/src/{file}_detected.csv"
 
     # # detect language
