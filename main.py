@@ -9,7 +9,7 @@ import re
 
 if __name__ == "__main__":
 
-    file = "Infinitas SEP 2023- text comments"
+    file = "MIS menuju SSOT JUL 2024- text comments"
     file_detected = f"./data/src/{file}_detected.csv"
 
     # # detect language

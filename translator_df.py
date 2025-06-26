@@ -26,7 +26,7 @@ class Translator:
         self.input_path = input_path
         self.mini_batch_size = mini_batch_size
 
-    def translate_series(self, s: pl.Series, source_languages: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]:
+    def translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]:
         """
         Translates a Polars Series of texts using the Azure Text Translation API.
         Accepts a Series of source_languages to conditionally set the 'from' parameter.
@@ -42,9 +42,8 @@ class Translator:
         request_data = []
         original_indices = []
         texts_list: List[Optional[str]] = s.to_list()
-        source_lang_list: List[Optional[str]] = source_languages.to_list()
 
-        for i, (text, lang) in enumerate(zip(texts_list, source_lang_list)):
+        for i, text in enumerate(texts_list):
             if text is not None: # Polars Null becomes Python None in to_list()
                 request_data.append({"text": str(text)})
                 original_indices.append(i)
@@ -161,7 +160,7 @@ class Translator:
             # Translate only the necessary rows
             if df_to_translate.height > 0:
                 translated_text_series, source_len_series, translated_len_series, detected_lang_series, detected_lang_score_series = \
-                    self.translate_series(df_to_translate[column], df_to_translate["comments_language_id"], translate_to_language=['en'])
+                    self.translate_series(df_to_translate[column], translate_to_language=['en'])
                 df_to_translate = df_to_translate.with_columns([
                     translated_text_series.alias("translated_text"),
                     source_len_series.alias("source_text_length"),
@@ -244,18 +243,17 @@ class Translator:
 
         return final_df
 
-if __name__ == "__main__":
-    file = "Infinitas SEP 2023- text comments"
-    # file = "MIS menuju SSOT JUL 2024- text comments_detected"
+# if __name__ == "__main__":
+#     file = "Infinitas SEP 2023- text comments"
+#     # file = "MIS menuju SSOT JUL 2024- text comments_detected"
 
-    translator_instance = Translator(
-        input_path=f"./data/src/{file}_detected.csv",
-        mini_batch_size=50  # Set your desired mini-batch size here.
-    )
+#     translator_instance = Translator(
+#         input_path=f"./data/src/{file}_detected.csv",
+#         mini_batch_size=50  # Set your desired mini-batch size here.
+#     )
 
-    # Process the translation for the 'comments' column using our explicit mini-batch approach.
-    processed_df =  translator_instance.process_translation_lazy(column="comments")
-    processed_df
+#     # Process the translation for the 'comments' column using our explicit mini-batch approach.
+#     processed_df =  translator_instance.process_translation_lazy(column="comments")
     # processed_df = processed_df.with_columns([
     #                 pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
     #             ]).with_columns([
