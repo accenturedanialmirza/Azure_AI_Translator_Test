@@ -9,9 +9,10 @@ The core workflow is orchestrated by the [`main.py`](main.py) script, which exec
 1. **Data Ingestion**: Reads input comment data from a specified CSV file.
 2. **Language Detection**: Utilizes the `detect_language.py` module to identify the language of each comment. This step is crucial for optimizing translation API calls.
 3. **Text Translation**: Dynamically determines an optimal mini-batch size using [`decide_batch_size.py`](decide_batch_size.py) and then translates comments to English (or other specified languages) using Azure AI Translator. The [`modules/translator_df.py`](modules/translator_df.py) module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
-4. **Text Splitting**: The [`split_texts.py`](split_texts.py) module is used in two stages: first, to accurately split both original and translated texts into lists of individual sentences within the DataFrame, and then to expand these lists into new rows, creating a detailed sentence-level view while preserving context and order.
-5. **Non-Informative Comment Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_non_informative.py`) to classify them as non-informative or legitimate.
-6. **Data Output**: The processed and enriched data is saved into two Parquet files in the `./data/prod/` directory: `_translated_lazy.parquet` (containing translated comments and non-informative classifications) and `_translated_split_lazy.parquet` (containing individual source and translated sentences).
+4. **PII Redaction**: Sensitive information (Personally Identifiable Information) within the translated comments is identified and redacted using the [`PII_redactor.py`](PII_redactor.py) module, ensuring data privacy.
+5. **Text Splitting**: The [`split_texts.py`](split_texts.py) module is used in two stages: first, to accurately split both original and translated texts into lists of individual sentences within the DataFrame, and then to expand these lists into new rows, creating a detailed sentence-level view while preserving context and order.
+6. **Non-Informative Comment Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_non_informative.py`) to classify them as non-informative or legitimate.
+7. **Data Output**: The processed and enriched data is saved into two Parquet files in the `./data/prod/` directory: `_translated_lazy.parquet` (containing translated comments and non-informative classifications) and `_translated_split_lazy.parquet` (containing individual source and translated sentences).
 
 ## Setup
 
@@ -89,20 +90,20 @@ This module is the heart of the translation process, containing the `Translator`
 * **`Translator` Class**:
     * **Initialization**: Takes `input_path` (path to the source CSV file) and `mini_batch_size` as parameters. The `mini_batch_size` controls how many comments are sent per API request, crucial for managing API limits and optimizing performance.
     * **`translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series, pl.Series, pl.Series]`**:
-        * **Purpose**: Translates a Polars Series of text comments.
-        * **Parameters**:
-            * `s`: A Polars Series containing the text comments to be translated.
-            * `translate_to_language`: A list of target language codes (default is `['en']` for English).
-        * **Functionality**: Returns the translated text as a Polars Series, along with the original and translated sentence lengths (useful for text splitting), and detected language and its score.
+            * **Purpose**: Translates a Polars Series of texts using the Azure Text Translation API.
+            * **Parameters**:
+                * `s`: A Polars Series containing the text comments to be translated.
+                * `translate_to_language`: A list of target language codes (default is `['en']` for English).
+            * **Functionality**: Returns the translated text as a Polars Series, along with the original and translated sentence lengths (useful for text splitting), and the detected source language and its confidence score.
     * **`process_translation_lazy(self, column: str) -> pl.DataFrame`**:
-        * **Purpose**: Manages the end-to-end translation workflow for a specified text column using Polars LazyFrames. This lazy approach is vital for handling datasets that exceed available memory.
-        * **Parameters**:
-            * `column`: The name of the column in the DataFrame that contains the text comments to be translated.
-        * **Functionality**:
-            * **Mini-Batch Processing**: Explicitly slices the LazyFrame into mini-batches. This strategy prevents API throttling and manages memory by processing data in manageable chunks.
-            * **Conditional Translation**: Intelligently filters out rows that do not require translation (e.g., comments already detected as English if the target language is English, or comments whose language is 'unknown').
-            * **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, leveraging [`modules/check_batch_size.py`](modules/check_batch_size.py) to allow the process to resume or recover from interruptions without re-processing already completed batches, and to ensure temporary files are consistent with the current batch size.
-            * **Final Concatenation**: After all batches are processed, it concatenates all intermediate Parquet files into a single, final Polars DataFrame, which is then returned.
+            * **Purpose**: Manages the end-to-end translation workflow for a specified text column using Polars LazyFrames. This lazy approach is vital for handling datasets that exceed available memory.
+            * **Parameters**:
+                * `column`: The name of the column in the DataFrame that contains the text comments to be translated.
+            * **Functionality**:
+                * **Mini-Batch Processing**: Explicitly slices the LazyFrame into mini-batches. This strategy prevents API throttling and manages memory by processing data in manageable chunks.
+                * **Conditional Translation**: Intelligently filters out rows that do not require translation (e.g., comments already detected as English if the target language is English, or comments whose language is 'unknown').
+                * **Intermediate Storage**: Saves each processed mini-batch as a temporary Parquet file in the `./data/temp/` directory. This acts as a checkpointing mechanism, leveraging [`modules/check_batch_size.py`](modules/check_batch_size.py) to allow the process to resume or recover from interruptions without re-processing already completed batches, and to ensure temporary files are consistent with the current batch size.
+                * **Final Concatenation**: After all batches are processed, it concatenates all intermediate Parquet files into a single, final Polars DataFrame, which is then returned.
 
 ### [`detect_language.py`](detect_language.py)
 
@@ -171,6 +172,21 @@ This module provides helper functions primarily for managing and verifying tempo
         * `path`: The directory path from which to remove files (e.g., `./data/temp/`).
     * **Functionality**: Deletes all files ending with `.parquet` within the specified directory. This is typically called after the entire translation process is complete to free up disk space, or when a new run with different parameters (like a new batch size) is initiated, requiring a fresh start.
 
+### [`PII_redactor.py`](PII_redactor.py)
+
+This module is responsible for identifying and redacting Personally Identifiable Information (PII) from text using the `spaCy` library and custom entity recognition rules.
+
+* **`redact_pii(text: str) -> str`**:
+    * **Purpose**: Redacts various types of PII from a given text string.
+    * **Parameters**:
+        * `text`: The input text string from which PII needs to be redacted.
+    * **Returns**: A new string with identified PII replaced by `[REDACTED]`.
+    * **Functionality**:
+        * Loads a `spaCy` English model (`en_core_web_sm`).
+        * Integrates custom `entity_ruler` patterns to detect specific entities like Social Security Numbers (SSN) and GENDER (male, female, etc.) using regular expressions.
+        * Incorporates `date_spacy` to identify and redact date entities.
+        * Iterates through detected entities (including standard spaCy NER labels like PERSON, ORG, GPE, DATE, etc., and custom ones) and replaces their text with `[REDACTED]`.
+
 ## Error Handling and Robustness
 
 The project incorporates several features to ensure robustness and efficient handling of large datasets:
@@ -180,8 +196,6 @@ The project incorporates several features to ensure robustness and efficient han
 
 ## Future Enhancements
 
-* **Enhanced Language Detection Output**: The `Translator` class now provides detected language and its confidence score, which can be leveraged for further analysis or filtering.
-* **Enhanced Language Detection Output**: The `Translator` class now provides detected language and its confidence score, which can be leveraged for further analysis or filtering.
 * **Support for Multiple Target Languages**: Extend the `Translator` class to easily support translation into multiple languages simultaneously in a single run.
 * **Configurability**: Externalize more parameters (e.g., input/output paths, column names, supported languages for detection) into a configuration file (e.g., YAML or JSON) for easier customization without code modification.
 * **Performance Monitoring**: Integrate logging and metrics to monitor API call performance, processing times, and resource utilization.
