@@ -1,6 +1,7 @@
 from modules.decide_batch_size import decide_batch_size
 from detect_language import df_language_verified
 from modules.translator_df import Translator
+from PII_redactor import redact_pii
 
 from detect_non_informative import predict_non_informative_comment
 from modules.split_texts import split_text, split_sentences_into_rows
@@ -9,7 +10,7 @@ import re
 
 if __name__ == "__main__":
 
-    file = "Infinitas SEP 2023- text comments"
+    file = "MIS menuju SSOT JUL 2024- text comments"
     file_detected = f"./data/src/{file}_detected.csv"
 
     # # detect language
@@ -28,19 +29,24 @@ if __name__ == "__main__":
     # Process the translation for the 'comments' column using our explicit mini-batch approach.
     processed_df =  translator_instance.process_translation_lazy(column="comments")
 
-    processed_df = processed_df.with_columns([
+    # redact translated comments
+    redacted_processed_df = processed_df.with_columns([
+                    pl.struct(["translated_text"]).map_elements(lambda row: redact_pii(row["translated_text"]), return_dtype=pl.Utf8).alias("redacted_translated_text")
+                ])
+
+    split_redacted_processed_df = redacted_processed_df.with_columns([
                     pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
                 ]).with_columns([
-                    pl.struct(["translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("translated_split_texts")
+                    pl.struct(["redacted_translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["redacted_translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("redacted_translated_split_texts")
                 ])
 
     # detect spam
-    processed_df = processed_df.with_columns([
+    split_redacted_processed_df = split_redacted_processed_df.with_columns([
                     pl.struct(["translated_text", "sentiment category"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"], row["sentiment category"]), return_dtype=pl.Boolean).alias("is_non_informative")
                 ])
 
-    processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
+    split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
 
     # split the sentences
-    final_df = split_sentences_into_rows(processed_df, "source_split_texts", "translated_split_texts")
+    final_df = split_sentences_into_rows(split_redacted_processed_df, "source_split_texts", "redacted_translated_split_texts")
     final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")
