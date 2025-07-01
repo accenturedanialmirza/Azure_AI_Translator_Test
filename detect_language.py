@@ -3,7 +3,7 @@ from lingua import Language, LanguageDetectorBuilder
 
 languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANISH, \
              Language.ITALIAN, Language.CHINESE, Language.JAPANESE, Language.PORTUGUESE, \
-             Language.INDONESIAN, Language.THAI, Language.MALAY]
+             Language.INDONESIAN, Language.THAI, Language.MALAY, Language.ARABIC]
 # detector = LanguageDetectorBuilder.from_languages(*Language.all()).build()
 detector = LanguageDetectorBuilder.from_languages(*languages).build()
 # language = detector.detect_language_of("Smoga kedepan agar lebih ditingkatkan lagi terkait training dan pelatihan utk meningkatkan pencapaian kinerja unit")
