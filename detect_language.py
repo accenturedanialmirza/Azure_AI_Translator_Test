@@ -8,9 +8,9 @@ languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANIS
 detector = LanguageDetectorBuilder.from_languages(*languages).build()
 # language = detector.detect_language_of("Smoga kedepan agar lebih ditingkatkan lagi terkait training dan pelatihan utk meningkatkan pencapaian kinerja unit")
 
-# file = "Infinitas SEP 2023- text comments"
+file = "Infinitas SEP 2023- text comments"
 
-# df = pl.scan_csv(f'./data/src/{file}.csv')
+df = pl.scan_csv(f'./data/src/{file}.csv')
 
 # Define a function to detect language and return the ISO code
 def _detect_language_iso(text: str) -> str:
@@ -19,12 +19,26 @@ def _detect_language_iso(text: str) -> str:
     lang = detector.detect_language_of(text)
     return lang.iso_code_639_1.name.lower() if lang else "unknown"
 
+def _detect_multiple_language_iso(text: str) -> list[str]:
+    if text is None or text.strip() == "":
+        return ["unknown"]
+    langs = detector.detect_multiple_languages_of(text)
+    results = [lang.language.iso_code_639_1.name.lower() for lang in langs] or ["unknown"]
+    return results
+
 def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
     # Load the LazyFrame and add the language detection column
     lf = df.with_columns([
             pl.col("comments").map_elements(_detect_language_iso, return_dtype=pl.String).alias("comments_language_id")
         ])
+    
+    # lf = df.with_columns([
+    #         pl.col("comments").map_elements(_detect_multiple_language_iso, return_dtype=pl.List(pl.Utf8)).alias("comments_language_id")
+    #     ])
 
     return lf
 
-# df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
+
+df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
+
+# df_language_verified(df).sink_parquet(f'./data/src/{file}_multiple_detected.parquet')
