@@ -37,9 +37,9 @@ def redact_pii(text):
     redacted_text = text
     for ent in doc.ents:
         if ent.label_ in ["SSN", "GENDER", "PERSON", "NORP", "FAC", "ORG", "GPE", "LOC", "PRODUCT", "EVENT", "WORK_OF_ART", "LAW", "LANGUAGE", "DATE", "TIME", "PERCENT", "MONEY", "QUANTITY", "ORDINAL", "CARDINAL"]:
-            redacted_text = redacted_text.replace(ent.text, "[REDACTED]")
+            redacted_text = redacted_text.replace(ent.text, "[]")
         else:
-            redacted_text = redacted_text.replace(ent.text, "[REDACTED]")
+            redacted_text = redacted_text.replace(ent.text, "[]")
     return redacted_text
 
 
