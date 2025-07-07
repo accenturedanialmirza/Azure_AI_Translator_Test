@@ -45,11 +45,18 @@ if __name__ == "__main__":
 
     # detect spam
     split_redacted_processed_df = split_redacted_processed_df.with_columns([
-                    pl.struct(["translated_text", "sentiment category"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"], row["sentiment category"]), return_dtype=pl.Boolean).alias("is_non_informative")
-                ])
+        pl.struct(["translated_text", "sentiment category"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"], row["sentiment category"]), return_dtype=pl.Boolean).alias("is_non_informative")
+    ])
 
-    split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
-    split_redacted_processed_df.write_excel(f"./data/prod/{file}_translated_lazy.xlsx")
+    # split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
+    split_redacted_processed_df.with_columns(
+                                        pl.col("respondent id").cast(pl.Utf8).str.replace(",", "").alias("respondent id"),
+                                        )\
+                                            .select("respondent id", "comments", \
+                                       "comments_language_id", "question code", \
+                                        "hide comment", "sentiment category", \
+                                        "translated_text", "is_non_informative"
+                                        ).write_excel(f"./data/prod/{file}_translated_lazy.xlsx")
 
     # split the sentences
     # final_df = split_sentences_into_rows(split_redacted_processed_df, "source_split_texts", "redacted_translated_split_texts")

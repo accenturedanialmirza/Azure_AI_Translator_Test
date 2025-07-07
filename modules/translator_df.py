@@ -125,13 +125,15 @@ class Translator:
         """
         # Create a LazyFrame by lazily scanning the CSV.
         # Only selects respondent id and comments columns
-        lf = pl.scan_csv(self.input_path).select(["respondent id", "comments", "comments_language_id", "question code",	"hide comment", "sentiment category"])
+        lf = pl.scan_csv(self.input_path).with_row_index("row_index") \
+            .select(["row_index", "respondent id", "comments", "comments_language_id", "question code",	"hide comment", "sentiment category"])
 
         # First, determine total row count without fully materializing data.
         total_rows = lf.select(pl.len()).collect().item()
 
         # Define the new schema (your CSV might contain other columns; adjust as needed).
         new_schema = {
+            "row_index": pl.UInt32,
             "respondent id": pl.Int64,
             "comments": pl.Utf8,
             "comments_language_id": pl.Utf8,
@@ -187,7 +189,7 @@ class Translator:
             ])
 
             # Combine both parts and sort to maintain original order
-            return pl.concat([df_to_translate, df_no_translate]).sort("respondent id")
+            return pl.concat([df_to_translate, df_no_translate]).sort("row_index")
 
         # output_dfs = [] # Removed: This was accumulating DataFrames in memory.
 
