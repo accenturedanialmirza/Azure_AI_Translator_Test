@@ -10,13 +10,13 @@ import re
 
 if __name__ == "__main__":
 
-    file = "Mitr Phol JUN 2025- text comments"
+    file = "Infinitas SEP 2023- text comments"
     file_detected = f"./data/src/{file}_detected.csv"
 
     # # detect language
-    # df = pl.scan_csv(f'./data/src/{file}.csv')
+    df = pl.scan_csv(f'./data/src/{file}.csv')
     # df_language_verified(df).sink_csv(file_detected)
-    df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
+    # df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 
     # decide batch size
     automated_mini_batch_size = decide_batch_size(df)
@@ -31,24 +31,25 @@ if __name__ == "__main__":
     processed_df =  translator_instance.process_translation_lazy(column="comments")
 
     # redact translated comments
-    redacted_processed_df = processed_df 
-                # .with_columns([
-                #     pl.struct(["translated_text"]).map_elements(lambda row: redact_pii(row["translated_text"]), return_dtype=pl.Utf8).alias("redacted_translated_text")
-                # ])
+    redacted_processed_df = processed_df \
+                .with_columns([
+                    pl.struct(["translated_text"]).map_elements(lambda row: redact_pii(row["translated_text"]), return_dtype=pl.Utf8).alias("redacted_translated_text")
+                ])
 
+    # calculate sentences for split 
     split_redacted_processed_df = redacted_processed_df \
-                # .with_columns([
-                #     pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
-                # ]).with_columns([
-                #     pl.struct(["redacted_translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["redacted_translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("redacted_translated_split_texts")
-                # ])
+                .with_columns([
+                    pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
+                ]).with_columns([
+                    pl.struct(["redacted_translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["redacted_translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("redacted_translated_split_texts")
+                ])
 
     # detect spam
     split_redacted_processed_df = split_redacted_processed_df.with_columns([
-        pl.struct(["translated_text", "sentiment category"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"], row["sentiment category"]), return_dtype=pl.Boolean).alias("is_non_informative")
+        pl.struct(["translated_text"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"]), return_dtype=pl.Boolean).alias("is_non_informative")
     ])
 
-    # split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
+    split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
     split_redacted_processed_df.with_columns(
                                         pl.col("respondent id").cast(pl.Utf8).str.replace(",", "").alias("respondent id"),
                                         )\
@@ -59,5 +60,5 @@ if __name__ == "__main__":
                                         ).write_excel(f"./data/prod/{file}_translated_lazy.xlsx")
 
     # split the sentences
-    # final_df = split_sentences_into_rows(split_redacted_processed_df, "source_split_texts", "redacted_translated_split_texts")
-    # final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")
+    final_df = split_sentences_into_rows(split_redacted_processed_df, "source_split_texts", "redacted_translated_split_texts")
+    final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")

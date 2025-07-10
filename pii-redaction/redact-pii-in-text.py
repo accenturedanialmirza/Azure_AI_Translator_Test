@@ -70,11 +70,52 @@ df
 
 # %%
 # Define a function to redact PII using spaCy NER
+
+"""
+    Entity Label	Description
+    PERSON	People, including fictional
+    NORP	Nationalities, religious and political groups
+    FAC	Facilities (e.g., buildings, airports, highways)
+    ORG	Organizations (e.g., companies, institutions)
+    GPE	Countries, cities, states
+    LOC	Non-GPE locations (e.g., mountains, bodies of water)
+    PRODUCT	Products (e.g., phones, cars, food)
+    EVENT	Named events (e.g., wars, sports events)
+    WORK_OF_ART	Titles of books, songs, etc.
+    LAW	Named documents made into laws
+    LANGUAGE	Any named language
+    DATE	Absolute or relative dates
+    TIME	Times smaller than a day
+    PERCENT	Percentage values
+    MONEY	Monetary values
+    QUANTITY	Measurements (e.g., weight, distance)
+    ORDINAL	"First", "second", etc.
+    CARDINAL	Numerals that do not fall under another type
+"""
 def redact_pii(text):
     doc = nlp(text)
     redacted_text = text
     for ent in doc.ents:
-        if ent.label_ in ["SSN", "GENDER", "PERSON", "NORP", "FAC", "ORG", "GPE", "LOC", "PRODUCT", "EVENT", "WORK_OF_ART", "LAW", "LANGUAGE", "DATE", "TIME", "PERCENT", "MONEY", "QUANTITY", "ORDINAL", "CARDINAL"]:
+        if ent.label_ in ["SSN", 
+                          "GENDER", 
+                          "PERSON", 
+                          "NORP", 
+                          "FAC", 
+                          "ORG", 
+                          "GPE", 
+                          "LOC", 
+                          "PRODUCT", 
+                          "EVENT", 
+                          "WORK_OF_ART", 
+                          "LAW", 
+                          "LANGUAGE", 
+                          "DATE", 
+                          "TIME", 
+                          "PERCENT", 
+                          "MONEY", 
+                          "QUANTITY",
+                          "ORDINAL",
+                          "CARDINAL"]:
             redacted_text = redacted_text.replace(ent.text, "[REDACTED]")
         else:
             redacted_text = redacted_text.replace(ent.text, "[REDACTED]")

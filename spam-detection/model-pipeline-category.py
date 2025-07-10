@@ -27,7 +27,7 @@ data.fillna({"comments": ""}, inplace=True)
 
 # %%
 # Define our features (X) and the target (y)
-X = data[['comments', 'sentiment category']]
+X = data[['comments']]
 y = data['hide comment']
 
 # %%
@@ -47,7 +47,6 @@ categorical_processor = OneHotEncoder(handle_unknown='ignore')
 preprocessor = ColumnTransformer(
     transformers=[
         ('text', text_processor, 'comments'),
-        ('category', categorical_processor, ['sentiment category'])
     ],
     remainder='passthrough' # Keep other columns if any (none in this case)
 )
@@ -80,7 +79,6 @@ y_pred
 # Create a DataFrame to compare actual and predicted values
 comparison_df = pd.DataFrame({
     'comments': X_test['comments'],
-    'sentiment_category': X_test['sentiment category'],
     'actual': y_test,
     'predicted': y_pred
 })
