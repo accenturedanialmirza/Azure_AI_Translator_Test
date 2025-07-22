@@ -4,15 +4,15 @@ This project offers a robust and efficient solution for processing and translati
 
 ## Project Overview
 
-The core workflow is orchestrated by the [`main.py`](main.py) script, which executes the following steps:
+The core workflow is orchestrated by the [`main.py`](main.py) script and includes the following steps:
 
 1. **Data Ingestion**: Reads input comment data from a specified CSV file.
 2. **Language Detection**: Utilizes the `detect_language.py` module to identify the language of each comment. This step is crucial for optimizing translation API calls.
-3. **Text Translation**: Dynamically determines an optimal mini-batch size using [`decide_batch_size.py`](decide_batch_size.py) and then translates comments to English (or other specified languages) using Azure AI Translator. The [`modules/translator_df.py`](modules/translator_df.py) module handles this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
+3. **Text Translation**: Dynamically determines an optimal mini-batch size using [`decide_batch_size.py`](modules/decide_batch_size.py) and then translates comments to English (or other specified languages) using Azure AI Translator. The [`modules/translator_df.py`](modules/translator_df.py) and [`modules/translator_multiple_df.py`](modules/translator_multiple_df.py) modules handle this efficiently through a lazy, mini-batch approach, which helps manage API rate limits and memory usage for large volumes of text.
 4. **PII Redaction**: Sensitive information (Personally Identifiable Information) within the translated comments is identified and redacted using the [`PII_redactor.py`](PII_redactor.py) module, ensuring data privacy.
 5. **Text Splitting**: The [`split_texts.py`](split_texts.py) module is used in two stages: first, to accurately split both original and translated texts into lists of individual sentences within the DataFrame, and then to expand these lists into new rows, creating a detailed sentence-level view while preserving context and order.
 6. **Non-Informative Comment Detection**: Translated comments are then passed through a pre-trained machine learning model (from `detect_non_informative.py`) to classify them as non-informative or legitimate.
-7. **Data Output**: The processed and enriched data is saved into two Parquet files in the `./data/prod/` directory: `_translated_lazy.parquet` (containing translated comments and non-informative classifications) and `_translated_split_lazy.parquet` (containing individual source and translated sentences).
+7. **Data Output**: The processed and enriched data is saved into two Parquet files in the `./data/prod/` directory: `_translated_lazy.parquet` (containing translated comments and non-informative classifications) and `_translated_split_lazy.parquet` (containing individual source and translated sentences). Additionally, an Excel file is generated with the translated comments and other relevant data.
 
 ## Setup
 
@@ -44,7 +44,7 @@ To get this project up and running, follow these steps:
         AZURE_TEXT_TRANSLATION_KEY="YOUR_AZURE_TRANSLATOR_KEY"
         AZURE_TEXT_TRANSLATION_ENDPOINT="YOUR_AZURE_TRANSLATOR_ENDPOINT"
         ```
-    * **Important**: Ensure the `location` variable within [`modules/translator_df.py`](modules/translator_df.py) (around line 20) is updated to match the region of your Azure Translator resource (e.g., "eastus", "westeurope"). This is critical for successful API communication.
+    * **Important**: Ensure the `location` variable within [`modules/translator_df.py`](modules/translator_df.py) and [`modules/translator_multiple_df.py`](modules/translator_multiple_df.py) (around line 20) is updated to match the region of your Azure Translator resource (e.g., "eastus", "westeurope"). This is critical for successful API communication.
 
 ## Usage
 
@@ -63,7 +63,23 @@ Upon successful execution, the script will:
 
 ## Custom Modules
 
-### [`translator_gemini.py`](translator_gemini.py)
+### [`modules/translator_multiple_df.py`](modules/translator_multiple_df.py)
+
+This module provides an alternative `Translator` class, offering a similar approach to `translator_df.py` but with additional functionalities for handling multiple target languages and more complex translation workflows.
+
+* **`Translator` Class**:
+    * **Initialization**: Accepts `input_path` for data handling and `mini_batch_size` for batch processing.
+    * **`translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]`**:
+        * **Purpose**: Translates a series of text comments using the Azure AI Translator API.
+        * **Returns**: A tuple containing the translated text series, source sentence lengths, and translated sentence lengths.
+    * **`process_translation_lazy(self, column: str) -> pl.DataFrame`**:
+        * **Purpose**: Manages the translation workflow for a specified column, applying `translate_series` directly.
+    * **`split_text(self, text: str, lengths: List[int]) -> List[str]`**:
+        * **Purpose**: Splits text into sentences based on provided lengths.
+    * **`split_sentences_into_rows(self, df: pl.DataFrame, source_split_column: str, translated_split_column: str) -> pl.DataFrame`**:
+        * **Purpose**: Expands DataFrame rows for detailed sentence-level analysis, creating a new row for each individual sentence pair.
+
+### [`modules/translator_gemini.py`](modules/translator_gemini.py)
 
 This module provides an alternative `Translator` class, offering a simpler, non-lazy approach to translation for smaller datasets or specific use cases where the full lazy-loading and batching mechanism of `modules/translator_df.py` is not required. It includes basic functionalities for creating DataFrames, translating series, and splitting texts.
 
