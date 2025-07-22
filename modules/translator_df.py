@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
 import polars as pl
 import requests, uuid, json, os, time
@@ -9,16 +13,17 @@ from tqdm import tqdm
 from modules.check_batch_size import check_temp_batch_size_matches, remove_temp_files
 # from detect_spam import classify_comment
 
-load_dotenv('.env')
+load_dotenv('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/.env')
 
 # Load your key and endpoint from the environment.
 key = os.getenv("AZURE_TEXT_TRANSLATION_KEY")
 endpoint = os.getenv("AZURE_TEXT_TRANSLATION_ENDPOINT")
+
 if not key or not endpoint:
     raise ValueError("Azure Text Translation KEY and ENDPOINT must be set in .env")
 
 location = "eastus"  # You might want to make this configurable.
-API_TRANSLATE_PATH = "/translate"
+API_TRANSLATE_PATH = "/translator/text/v3.0/translate"
 constructed_url = endpoint + API_TRANSLATE_PATH
 
 class Translator:
@@ -245,24 +250,24 @@ class Translator:
 
         return final_df
 
-# if __name__ == "__main__":
-#     file = "Infinitas SEP 2023- text comments"
-#     # file = "MIS menuju SSOT JUL 2024- text comments_detected"
+if __name__ == "__main__":
+    file = "Infinitas SEP 2023- text comments"
+    # file = "MIS menuju SSOT JUL 2024- text comments_detected"
 
-#     translator_instance = Translator(
-#         input_path=f"./data/src/{file}_detected.csv",
-#         mini_batch_size=50  # Set your desired mini-batch size here.
-#     )
+    translator_instance = Translator(
+        input_path=f"Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}_detected.csv",
+        mini_batch_size=50  # Set your desired mini-batch size here.
+    )
 
-#     # Process the translation for the 'comments' column using our explicit mini-batch approach.
-#     processed_df =  translator_instance.process_translation_lazy(column="comments")
+    # Process the translation for the 'comments' column using our explicit mini-batch approach.
+    processed_df =  translator_instance.process_translation_lazy(column="comments")
     # processed_df = processed_df.with_columns([
     #                 pl.struct(["comments", "source_text_length"]).map_elements(lambda row: split_text(row["comments"], row["source_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("source_split_texts")
     #             ]).with_columns([
     #                 pl.struct(["translated_text", "translated_text_length"]).map_elements(lambda row: split_text(row["translated_text"], row["translated_text_length"]), return_dtype=pl.List(pl.Utf8)).alias("translated_split_texts")
     #             ])
 
-    # processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
+    processed_df.write_parquet(f"Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/prod/{file}_translated_lazy.parquet")
 
     # # df.with_columns(pl.col("translated_text").map_elements(lambda text: classify_comment(text), return_dtype=pl.Boolean).alias("is_spam"))
 

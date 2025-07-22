@@ -7,11 +7,6 @@ languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANIS
              Language.POLISH, Language.CZECH]
 # detector = LanguageDetectorBuilder.from_languages(*Language.all()).build()
 detector = LanguageDetectorBuilder.from_languages(*languages).build()
-# file = "Mitr Phol JUN 2025- text comments- v2"
-
-# df = pl.scan_csv(f'./data/src/{file}.csv')
-
-# df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 
 # Define a function to detect language and return the ISO code
 def _detect_language_iso(text: str) -> str:
@@ -40,7 +35,13 @@ def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
     return lf
 
 
-# df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
+file = "MIS menuju SSOT JUL 2024- text comments"
+
+df = pl.scan_csv(f'Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}.csv')
+
+# df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
+
+df_language_verified(df).sink_csv(f'Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}_detected.csv')
 
 # df_language_verified(df).collect().to_pandas().to_excel(f'./data/src/{file}_detected.xlsx', index=False)
 

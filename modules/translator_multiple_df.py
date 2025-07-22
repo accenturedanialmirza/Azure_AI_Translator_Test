@@ -9,7 +9,7 @@ from tqdm import tqdm
 from check_batch_size import check_temp_batch_size_matches, remove_temp_files
 # from detect_spam import classify_comment
 
-load_dotenv('.env')
+load_dotenv('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/.env')
 
 # Load your key and endpoint from the environment.
 key = os.getenv("AZURE_TEXT_TRANSLATION_KEY")
@@ -18,7 +18,7 @@ if not key or not endpoint:
     raise ValueError("Azure Text Translation KEY and ENDPOINT must be set in .env")
 
 location = "eastus"  # You might want to make this configurable.
-API_TRANSLATE_PATH = "/translate"
+API_TRANSLATE_PATH = "/translator/text/v3.0/translate"
 constructed_url = endpoint + API_TRANSLATE_PATH
 
 class Translator:

@@ -12,7 +12,7 @@ endpoint = os.getenv("AZURE_TEXT_TRANSLATION_ENDPOINT")
 # required if you're using a multi-service or regional (not global) resource. It can be found in the Azure portal on the Keys and Endpoint page.
 location = "eastus"
 
-path = '/translate'
+path = '/translator/text/v3.0/translate'
 constructed_url = endpoint + path
 
 params = {

@@ -4,8 +4,7 @@ import pandas as pd
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-
-loaded_model = joblib.load("spam-detection/comment_hide_classifier.joblib")
+loaded_model = joblib.load("Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/spam-detection/comment_hide_classifier.joblib")
 
 def predict_non_informative_comment(comments: str) -> bool:
 
