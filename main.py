@@ -1,3 +1,6 @@
+import os 
+os.chdir('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test')
+
 from modules.decide_batch_size import decide_batch_size
 from detect_language import df_language_verified
 from modules.translator_df import Translator
@@ -10,11 +13,11 @@ import re
 
 if __name__ == "__main__":
 
-    file = "MIS menuju SSOT JUL 2024- text comments"
-    file_detected = f"Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}_detected.csv"
+    file = "Infinitas SEP 2023- text comments"
+    file_detected = f"./data/src/{file}_detected.csv"
 
     # # detect language
-    df = pl.scan_csv(f'Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}.csv')
+    df = pl.scan_csv(f'./data/src/{file}.csv')
     # df_language_verified(df).sink_csv(file_detected)
     # df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 
@@ -49,7 +52,7 @@ if __name__ == "__main__":
         pl.struct(["translated_text"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"]), return_dtype=pl.Boolean).alias("is_non_informative")
     ])
 
-    split_redacted_processed_df.write_parquet(f"Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/prod/{file}_translated_lazy.parquet")
+    split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
     split_redacted_processed_df.with_columns(
                                         pl.col("respondent id").cast(pl.Utf8).str.replace(",", "").alias("respondent id"),
                                         )\
@@ -57,8 +60,8 @@ if __name__ == "__main__":
                                        "comments_language_id", "question code", \
                                         "hide comment", "sentiment category", \
                                         "translated_text", "is_non_informative"
-                                        ).write_excel(f"Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/prod/{file}_translated_lazy.xlsx")
+                                        ).write_excel(f"./data/prod/{file}_translated_lazy.xlsx")
 
     # split the sentences
     final_df = split_sentences_into_rows(split_redacted_processed_df, "source_split_texts", "redacted_translated_split_texts")
-    final_df.write_parquet(f"Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/prod/{file}_translated_split_lazy.parquet")
+    final_df.write_parquet(f"./data/prod/{file}_translated_split_lazy.parquet")

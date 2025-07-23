@@ -1,4 +1,8 @@
 import polars as pl
+import os
+
+# Change the working directory to the desired path
+os.chdir('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test')
 from lingua import Language, LanguageDetectorBuilder
 
 languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANISH, \
@@ -35,13 +39,13 @@ def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
     return lf
 
 
-file = "MIS menuju SSOT JUL 2024- text comments"
+file = "Infinitas SEP 2023- text comments"
 
-df = pl.scan_csv(f'Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}.csv')
+df = pl.scan_csv(f'./data/src/{file}.csv')
 
 # df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 
-df_language_verified(df).sink_csv(f'Users/danial.m.bin.madrawi/Azure_AI_Translator_Test/data/src/{file}_detected.csv')
+df_language_verified(df).sink_csv(f'./data/src/{file}_detected.csv')
 
 # df_language_verified(df).collect().to_pandas().to_excel(f'./data/src/{file}_detected.xlsx', index=False)
 
