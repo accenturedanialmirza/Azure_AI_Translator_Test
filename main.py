@@ -13,11 +13,11 @@ import re
 
 if __name__ == "__main__":
 
-    file = "Infinitas SEP 2023- text comments"
+    file = "Vertex Procurement Dexterity Raw Scores- text comments"
     file_detected = f"./data/src/{file}_detected.csv"
 
     # # detect language
-    df = pl.scan_csv(f'./data/src/{file}.csv')
+    df = pl.scan_csv(f'./data/src/{file}_detected.csv')
     # df_language_verified(df).sink_csv(file_detected)
     # df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 

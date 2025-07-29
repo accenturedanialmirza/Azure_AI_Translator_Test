@@ -5,6 +5,8 @@ from date_spacy import find_dates
 # Load the spaCy model for Named Entity Recognition (NER)
 nlp = spacy.load("en_core_web_sm")
 
+ruler = nlp.add_pipe("entity_ruler", config={"overwrite_ents": True}, before="ner")
+
 # Add Social Security Number
 ssn_pattern_regex = {
     "label": "SSN",
@@ -16,9 +18,6 @@ ssn_pattern_regex = {
         {"TEXT": {"REGEX": "\\d{4}"}}
     ]
 }
-ruler = nlp.add_pipe("entity_ruler", config={"overwrite_ents": True}, before="ner")
-ruler.add_patterns([ssn_pattern_regex])
-
 # Add gender/sex pattern
 gender_pattern_regex = {
     "label": "GENDER",
@@ -26,10 +25,7 @@ gender_pattern_regex = {
         {"LOWER": {"REGEX": "\\b(gender|sex|male|female|man|woman|boy|girl|he|she|him|her)\\b"}}
     ]
 }
-ruler.add_patterns([gender_pattern_regex])
-
-# Add date finder
-nlp.add_pipe('find_dates', after="ner")
+ruler.add_patterns([ssn_pattern_regex, gender_pattern_regex])
 
 # Define a function to redact PII using spaCy NER
 def redact_pii(text):
@@ -42,4 +38,4 @@ def redact_pii(text):
             redacted_text = redacted_text.replace(ent.text, "[]")
     return redacted_text
 
-
+print(redact_pii("There's no overall DT project progress shared with regions, regions are asking more but no regular official information provided."))

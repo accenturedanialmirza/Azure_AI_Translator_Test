@@ -39,9 +39,11 @@ def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
     return lf
 
 
-file = "Infinitas SEP 2023- text comments"
+file = "Vertex Procurement Dexterity Raw Scores- text comments"
 
-df = pl.scan_csv(f'./data/src/{file}.csv')
+# df = pl.scan_csv(f'./data/src/{file}.csv')
+
+df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 
 # df = pl.read_excel(f'./data/src/{file}.xlsx.xlsx').lazy()
 
