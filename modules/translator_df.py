@@ -1,7 +1,6 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-os.chdir('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test')
 
 import numpy as np
 import polars as pl
