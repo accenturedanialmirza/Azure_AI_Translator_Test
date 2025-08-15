@@ -37,6 +37,7 @@ def window_sliders(text:str, size:int) -> list[str]:
     
     return result
 
+
 COUNTRY_TO_LANGS = {
     "THAILAND": ["THAI", "CHINESE", "ENGLISH"],
     "SPAIN": ["SPANISH", "CATALAN", "BASQUE", "ENGLISH"],
@@ -108,7 +109,7 @@ def detect_multi_lang(texts:list[str]|str, languages, t=.4, window=False, n=1) -
                 r = set()
                 for l in one_result:
                     for i in l:
-                        r.add(i.language.iso_code_639_1)
+                        r.add(i.language.iso_code_639_1.name.lower() )
                 result.append(list(r))
                 
             return result
@@ -116,23 +117,23 @@ def detect_multi_lang(texts:list[str]|str, languages, t=.4, window=False, n=1) -
         result_list = detector.detect_multiple_languages_in_parallel_of(texts)
         result = []
         for l in result_list:
-            temp = [r.language.iso_code_639_1 for r in l]
-            result.append(list(set(temp)))
+            temp = [r.language.iso_code_639_1.name.lower()  for r in l]
+            [result.append(x) for x in set(temp)]
         
         return result
         
     elif isinstance(texts, str):
         result_set = detector.detect_multiple_languages_of(texts)
 
-        result = [r.language.iso_code_639_1 for r in result_set]
+        result = [r.language.iso_code_639_1.name.lower()  for r in result_set]
         
         return list(set(result))
     else:
         raise ValueError("The input text must be either a list of strings or a string.")
     
 if __name__ == "__main__":
-    text_list = window_sliders("saya belum tau terkait program Management Information System (MIS) menuju Single Source of Truth (SSoT)", 1000)
+    text_list = window_sliders("Good morning, Apa khabar?", 1000)
 
-    lang = get_langs(COUNTRY_TO_LANGS, "THAILAND")
+    lang = get_langs(COUNTRY_TO_LANGS, "INDONESIA")
 
     print(detect_multi_lang(text_list, lang))

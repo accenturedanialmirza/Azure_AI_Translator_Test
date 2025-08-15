@@ -36,8 +36,6 @@ def df_language_verified(df: pl.LazyFrame) -> pl.LazyFrame:
 
     return lf
 
-
-
 file = "MIS menuju SSoT JUL 2024- text comments"
 
 # df = pl.scan_csv(f'./data/src/{file}.csv')
