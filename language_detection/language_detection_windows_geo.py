@@ -1,15 +1,10 @@
 
 from lingua import LanguageDetectorBuilder
 from lingua import Language
+import json
 
-COUNTRY_TO_LANGS = {
-    "THAILAND": ["THAI", "CHINESE", "ENGLISH"],
-    "SPAIN": ["SPANISH", "CATALAN", "BASQUE", "ENGLISH"],
-    "INDIA": ["HINDI", "BENGALI", "MARATHI", "TAMIL", "TELUGU", "GUJARATI", "URDU", "ENGLISH"],
-    "INDONESIA": ["INDONESIAN", "ENGLISH"],
-    "JAPAN": ["JAPANESE", "ENGLISH", "CHINESE", "KOREAN"],
-    "MALAYSIA": ["MALAY", "ENGLISH", "CHINESE", "TAMIL"],
-}
+with open('language_detection/country_languages.json') as file:
+    COUNTRY_TO_LANGS = json.load(file)
 
 def window_sliders(text:str, size:int) -> list[str]:
     if not isinstance(text,str): raise ValueError("Text must be a string")
@@ -69,9 +64,11 @@ def detect_multi_lang(texts:list[str]|str, languages, t=.4, window=False, n=1) -
     else:
         raise ValueError("The input text must be either a list of strings or a string.")
     
-# if __name__ == "__main__":
-#     text_list = window_sliders("Good morning, Apa khabar?", 1000)
+if __name__ == "__main__":
+    text_list = window_sliders("Good morning, Apa khabar?", 1000)
 
-#     lang = get_langs(COUNTRY_TO_LANGS, "INDONESIA")
+    lang = get_langs(COUNTRY_TO_LANGS, "INDONESIA")
 
-#     print(detect_multi_lang(text_list, lang))
+    print(detect_multi_lang(text_list, lang))
+
+    # print(dict(COUNTRY_TO_LANGS).keys())

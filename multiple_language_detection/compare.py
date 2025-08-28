@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import polars as pl
-from detect_language import _detect_multiple_language_iso, df_language_verified
+from language_detection.detect_language import _detect_multiple_language_iso, df_language_verified
 from multi_lang_det_utils import window_sliders, get_langs, detect_multi_lang, COUNTRY_TO_LANGS
 
 

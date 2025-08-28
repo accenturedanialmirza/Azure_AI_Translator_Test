@@ -1,6 +1,6 @@
 # Azure AI Translator Project
 
-This project offers a robust and efficient solution for processing and translating text comments using Azure AI Translator services. It leverages the Polars data manipulation library for high-performance operations, making it suitable for large datasets. The pipeline integrates functionalities for language detection, text translation with intelligent mini-batch processing, spam detection, and precise text splitting.
+This project offers a highly efficient solution for processing, translating, redacting, and analyzing text comments using Azure AI Translator and other advanced libraries. Leveraging Polars for data manipulation, it caters to large dataset needs with its comprehensive pipeline ranging from language detection to PII redaction and non-informative comment classification.
 
 ## Project Overview
 
@@ -203,17 +203,13 @@ This module is responsible for identifying and redacting Personally Identifiable
         * Incorporates `date_spacy` to identify and redact date entities.
         * Iterates through detected entities (including standard spaCy NER labels like PERSON, ORG, GPE, DATE, etc., and custom ones) and replaces their text with `[REDACTED]`.
 
-## Error Handling and Robustness
-
-The project incorporates several features to ensure robustness and efficient handling of large datasets:
-* **Mini-Batch Processing**: Prevents API rate limit issues and manages memory by processing data in smaller, controlled chunks.
+## Robust Error Handling
+Insightful management utilizing strategic batching and checkpoints ensures process resilience and efficiency throughout operations.
 * **Intermediate File Storage**: Saving temporary batches to disk (`./data/temp/`) acts as a checkpointing mechanism, allowing the process to resume from the last completed batch in case of interruptions.
 * **LazyFrame Operations**: Utilizing Polars LazyFrames ensures that data is processed efficiently without loading the entire dataset into memory, which is critical for very large inputs.
 
-## Future Enhancements
-
-* **Support for Multiple Target Languages**: Extend the `Translator` class to easily support translation into multiple languages simultaneously in a single run.
-* **Configurability**: Externalize more parameters (e.g., input/output paths, column names, supported languages for detection) into a configuration file (e.g., YAML or JSON) for easier customization without code modification.
+## Future Directions
+Future expansions aim to increase language support, optimize configuration flexibility, and bolster deployment strategies, including Dockerization.
 * **Performance Monitoring**: Integrate logging and metrics to monitor API call performance, processing times, and resource utilization.
 * **Advanced Non-Informative Comment Detection**: Explore integrating more sophisticated models or real-time feedback loops for non-informative comment detection.
 * **Dockerization**: Provide a Dockerfile for easy containerization and deployment of the application.

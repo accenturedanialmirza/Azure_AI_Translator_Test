@@ -1,10 +1,10 @@
 import os 
-os.chdir('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test')
+# os.chdir('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test')
 
 from modules.decide_batch_size import decide_batch_size
-from detect_language import df_language_verified
+from language_detection.detect_language import df_language_verified
 from modules.translator_df import Translator
-from PII_redactor import redact_pii
+from PII_redactor import redact_pii, redact_pii_df
 
 from detect_non_informative import predict_non_informative_comment
 from modules.split_texts import split_text, split_sentences_into_rows
@@ -61,6 +61,8 @@ if __name__ == "__main__":
                                         "hide comment", "sentiment category", \
                                         "translated_text", "is_non_informative"
                                         ).write_excel(f"./data/prod/{file}_translated_lazy.xlsx")
+    # split_redacted_processed_df = redact_pii_df(split_redacted_processed_df)
+    split_redacted_processed_df.write_excel(f"./data/prod/{file}_translated_lazy.xlsx")
 
     # split the sentences
     final_df = split_sentences_into_rows(split_redacted_processed_df, "source_split_texts", "redacted_translated_split_texts")
