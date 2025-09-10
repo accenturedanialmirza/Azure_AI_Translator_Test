@@ -27,7 +27,14 @@ gender_pattern_regex = {
         {"LOWER": {"REGEX": "\\b(gender|sex|male|female|man|woman|boy|girl|he|she|him|her)\\b"}}
     ]
 }
-ruler.add_patterns([ssn_pattern_regex, gender_pattern_regex])
+email_pattern_regex = {
+    "label": "EMAIL",
+    "pattern": [
+        {"TEXT": {"REGEX": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"}}
+    ]
+}
+
+ruler.add_patterns([ssn_pattern_regex, gender_pattern_regex, email_pattern_regex])
 
 def regex_name_fallback(text, redacted_text):
     # Match words that look like names (e.g., lowercase words in a sentence)
