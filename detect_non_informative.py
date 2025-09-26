@@ -7,12 +7,13 @@ import pandas as pd
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-loaded_model = joblib.load("./spam-detection/comment_hide_classifier.joblib")
+loaded_model = joblib.load("./spam-detection/comment_hide_classifier_v2.joblib")
 
-def predict_non_informative_comment(comments: str) -> bool:
+def predict_non_informative_comment(qcode: str, comments: str) -> bool:
 
     input_data = pd.DataFrame({
-        'comments': [comments],
+        'question code': [qcode],
+        'comments': [comments]
     })
     
     # Make prediction
@@ -24,3 +25,4 @@ def predict_non_informative_comment(comments: str) -> bool:
 # sentiment1 = "null"
 # should_hide1 = predict_hide_comment(comment1, sentiment1)
 # print(f"Comment: '{comment1}' | Sentiment: {sentiment1} | Hide? -> {should_hide1}")
+# print(predict_non_informative_comment('vtx|beh_cfc_open', 'N/A'))

@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     # detect spam
     split_redacted_processed_df = split_redacted_processed_df.with_columns([
-        pl.struct(["translated_text"]).map_elements(lambda row: predict_non_informative_comment(row["translated_text"]), return_dtype=pl.Boolean).alias("is_non_informative")
+        pl.struct(["question code", "translated_text"]).map_elements(lambda row: predict_non_informative_comment(row["question code"], row["translated_text"]), return_dtype=pl.Boolean).alias("is_non_informative")
     ])
 
     split_redacted_processed_df.write_parquet(f"./data/prod/{file}_translated_lazy.parquet")
