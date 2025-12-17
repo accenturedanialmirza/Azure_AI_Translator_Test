@@ -31,11 +31,10 @@ class Translator:
         self.input_path = input_path
         self.mini_batch_size = mini_batch_size
 
-    def translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> Tuple[pl.Series, pl.Series, pl.Series]:
+    def translate_series(self, s: pl.Series, translate_to_language: List[str] = ['en']) -> pl.Series:
         """
         Translates a Polars Series of texts using the Azure Text Translation API.
-        Accepts a Series of source_languages to conditionally set the 'from' parameter.
-        Returns three Series: translated text, source sentence lengths, and translated sentence lengths.
+        Returns a single Series: translated text.
         """
         # Ensure the series is of string type.
         if s.dtype != pl.Utf8: # pl.String is an alias for pl.Utf8
@@ -43,7 +42,6 @@ class Translator:
             s = s.cast(pl.Utf8)
 
         # Prepare data for the API call by filtering out null values.
-        # Also, determine if a common 'from' language can be used for the batch.
         request_data = []
         original_indices = []
         texts_list: List[Optional[str]] = s.to_list()
@@ -57,17 +55,11 @@ class Translator:
         if not request_data:
             print("No non-null texts found to translate.")
             translated_texts = [None] * len(s)
-            source_lengths = [[0]] * len(s)
-            translated_lengths = [[0]] * len(s)
-            return (pl.Series("translated_text", translated_texts, dtype=pl.String),\
-                    pl.Series("source_text_length", source_lengths, dtype=pl.List(pl.Int64)),\
-                    pl.Series("translated_text_length", translated_lengths, dtype=pl.List(pl.Int64)))
+            return pl.Series("translated_text", translated_texts, dtype=pl.String)
 
         params = {
             "api-version": "3.0",
-            "to": translate_to_language,
-            "includeSentenceLength": True,
-            # "toScript": "latn" # Added for transliteration
+            "to": translate_to_language
         }
 
         headers = {
@@ -84,27 +76,13 @@ class Translator:
 
             # Initialize output lists with defaults.
             translated_texts = [None] * len(s)
-            source_lengths: List[List[int]] = [[0]] * len(s)
-            translated_lengths: List[List[int]] = [[0]] * len(s)
-            detected_languages: List[Optional[str]] = [None] * len(s) # New: for detected language
-            detected_language_scores: List[Optional[float]] = [None] * len(s) # New: for detected language score
             
             # Process the API response, mapping back to the original indices.
             for api_response_index, item in enumerate(response_json):
                 original_idx = original_indices[api_response_index]
                 try:
                     translated_text = item["translations"][0]["text"]
-                    source_text_length = item['translations'][0]['sentLen']['srcSentLen']
-                    translated_length = item["translations"][0]["sentLen"]["transSentLen"]
-
-                    detected_language = item.get("detectedLanguage", {}).get("language", None)
-                    detected_language_score = item.get("detectedLanguage", {}).get("score", None)
-                    
                     translated_texts[original_idx] = translated_text
-                    source_lengths[original_idx] = source_text_length
-                    translated_lengths[original_idx] = translated_length
-                    detected_languages[original_idx] = detected_language # New
-                    detected_language_scores[original_idx] = detected_language_score # New
 
                 except (IndexError, KeyError, TypeError) as e:
                     print(f"Warning: Error processing API response for item at API index {api_response_index} "
@@ -115,12 +93,7 @@ class Translator:
             raise
 
         translated_text_series = pl.Series("translated_text", translated_texts, dtype=pl.String)
-        source_length_series = pl.Series("source_text_length", source_lengths, dtype=pl.List(pl.Int64))
-        translated_length_series = pl.Series("translated_text_length", translated_lengths, dtype=pl.List(pl.Int64))
-        detected_language_series = pl.Series("detected_language", detected_languages, dtype=pl.String) # New
-        detected_language_score_series = pl.Series("detected_language_score", detected_language_scores, dtype=pl.Float64) # New
-        
-        return translated_text_series, source_length_series, translated_length_series, detected_language_series, detected_language_score_series
+        return translated_text_series
 
     def process_translation_lazy(self, column: str) -> pl.DataFrame:
         """
@@ -145,11 +118,7 @@ class Translator:
             "question code": pl.Utf8,
             "hide comment": pl.Boolean,
             "sentiment category": pl.Utf8,
-            "translated_text": pl.Utf8,
-            "source_text_length": pl.List(pl.Int64),
-            "translated_text_length": pl.List(pl.Int64),
-            "detected_language": pl.Utf8,
-            "detected_language_score": pl.Float64,
+            "translated_text": pl.Utf8
         }
 
         # Define a batch function.
@@ -166,31 +135,18 @@ class Translator:
 
             # Translate only the necessary rows
             if df_to_translate.height > 0:
-                translated_text_series, source_len_series, translated_len_series, detected_lang_series, detected_lang_score_series = \
-                    self.translate_series(df_to_translate[column], translate_to_language=['en'])
+                translated_text_series = self.translate_series(df_to_translate[column], translate_to_language=['en'])
                 df_to_translate = df_to_translate.with_columns([
-                    translated_text_series.alias("translated_text"),
-                    source_len_series.alias("source_text_length"),
-                    translated_len_series.alias("translated_text_length"),
-                    detected_lang_series.alias("detected_language"), # New
-                    detected_lang_score_series.alias("detected_language_score") # New
+                    translated_text_series.alias("translated_text")
                 ])
             else:
                 df_to_translate = df_to_translate.with_columns([
-                    pl.lit(None).alias("translated_text").cast(pl.Utf8),
-                    pl.lit([0]).alias("source_text_length").cast(pl.List(pl.Int64)),
-                    pl.lit([0]).alias("translated_text_length").cast(pl.List(pl.Int64)),
-                    pl.lit(None).alias("detected_language").cast(pl.Utf8), # New
-                    pl.lit(None).alias("detected_language_score").cast(pl.Float64) # New
+                    pl.lit(None).alias("translated_text").cast(pl.Utf8)
                 ])
 
-            # For rows that don't need translation, copy the original text and compute lengths
+            # For rows that don't need translation, copy the original text
             df_no_translate = df_no_translate.with_columns([
-                df_no_translate[column].alias("translated_text"),
-                pl.col(column).map_elements(lambda x: [len(x)] if x else [0], return_dtype=pl.List(pl.Int64)).alias("source_text_length"),
-                pl.col(column).map_elements(lambda x: [len(x)] if x else [0], return_dtype=pl.List(pl.Int64)).alias("translated_text_length"),
-                df_no_translate["comments_language_id"].alias("detected_language"), # Use existing language for non-translated
-                pl.lit(1.0).alias("detected_language_score").cast(pl.Float64) # Assume high confidence for known language
+                df_no_translate[column].alias("translated_text")
             ])
 
             # Combine both parts and sort to maintain original order

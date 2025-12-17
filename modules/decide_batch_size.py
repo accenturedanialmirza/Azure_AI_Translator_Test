@@ -33,14 +33,3 @@ def decide_batch_size(df: pl.LazyFrame) -> int:
     automated_mini_batch_size = min(automated_mini_batch_size, total_rows) if total_rows > 0 else 1
 
     return automated_mini_batch_size
-
-    # print(f"Total rows: {total_rows}, Total characters in 'comments': {total_characters}, Average comment length: {average_comment_length:.2f}")
-    # print(f"Using dynamically determined mini_batch_size: {automated_mini_batch_size}")
-
-# file = "Accenture TGPS FEB 2024- text comments"
-
-# file_detected = f"./data/src/{file}_detected.csv"
-
-# df = pl.scan_csv(file_detected)
-
-# print(decide_batch_size(df))

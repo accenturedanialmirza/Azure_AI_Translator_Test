@@ -3,10 +3,6 @@ import os
 import json
 
 from lingua import Language, LanguageDetectorBuilder
-# from language_detection_windows_geo import window_sliders, get_langs, detect_multi_lang, COUNTRY_TO_LANGS
-
-with open('language_detection/country_languages.json') as file_text:
-    COUNTRY_TO_LANGS = json.load(file_text)
 
 languages = [Language.ENGLISH, Language.FRENCH, Language.GERMAN, Language.SPANISH, \
              Language.ITALIAN, Language.CHINESE, Language.JAPANESE, Language.PORTUGUESE, \

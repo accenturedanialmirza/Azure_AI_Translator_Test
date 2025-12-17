@@ -49,7 +49,8 @@ def redact_pii(text):
     doc = nlp(text)
     redacted_text = text
     for ent in doc.ents:
-        if ent.label_ in ["SSN", "GENDER", "PERSON", "NORP", "FAC", "ORG", "GPE", "LOC", "PRODUCT", "EVENT", "WORK_OF_ART", "LAW", "LANGUAGE", "DATE", "TIME", "PERCENT", "MONEY", "QUANTITY", "ORDINAL", "CARDINAL"]:
+        # if ent.label_ in ["SSN", "GENDER", "PERSON", "NORP", "FAC", "ORG", "GPE", "LOC", "PRODUCT", "EVENT", "WORK_OF_ART", "LAW", "LANGUAGE", "DATE", "TIME", "PERCENT", "MONEY", "QUANTITY", "ORDINAL", "CARDINAL"]:
+        if ent.label_ in ["PERSON"]:
             redacted_text = redacted_text.replace(ent.text, "[]")
     redacted_text = regex_name_fallback(text, redacted_text)
     return redacted_text

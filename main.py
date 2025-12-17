@@ -2,12 +2,10 @@ import os
 # os.chdir('/home/azureuser/cloudfiles/code/Users/danial.m.bin.madrawi/Azure_AI_Translator_Test')
 
 from modules.decide_batch_size import decide_batch_size
-from language_detection.detect_language import df_language_verified
 from modules.translator_df import Translator
 from PII_redactor import redact_pii, redact_pii_df
 
 from detect_non_informative import predict_non_informative_comment
-from modules.split_texts import split_text, split_sentences_into_rows
 import polars as pl
 import re
 
@@ -37,4 +35,8 @@ if __name__ == "__main__":
                     pl.struct(["translated_text"]).map_elements(lambda row: redact_pii(row["translated_text"]), return_dtype=pl.Utf8).alias("redacted_translated_text")
                 ])
     
-    redacted_processed_df.write_parquet(f'./data/prod/{file}_translated_redacted.parquet')
+    predicted_redacted_processed_df = redacted_processed_df.with_columns([
+        pl.struct(["question code", "translated_text"]).map_elements(lambda row: predict_non_informative_comment(row["question code"], row["translated_text"]), return_dtype=pl.Boolean).alias("is_non_informative")
+    ])
+
+    predicted_redacted_processed_df.write_csv(f'./data/prod/{file}_detected_translated_redacted_predicted.csv')
